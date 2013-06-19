@@ -31,16 +31,12 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
-	afx_msg void OnFileOpen();
-	afx_msg void OnBnClickedButton1();
-	afx_msg void OnCbnSelchangeComboread();
-private:
-	CString strSNFileName;
-public:
+	afx_msg void OnFileOpenSn();
 	CListCtrl m_SNListCtrl;
+	CString strSNFileName;
 private:
 	int ExcelToListCtrl(CString strExcelFilePath);
 	CString GetExcelDriver(void);
-public:
 	int InsertRow(CString strSN, CString strMasterDate, CString strSlaveDate);
+
 };

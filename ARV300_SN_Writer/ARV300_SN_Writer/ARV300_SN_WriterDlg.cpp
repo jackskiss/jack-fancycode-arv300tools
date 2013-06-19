@@ -54,6 +54,7 @@ END_MESSAGE_MAP()
 
 CARV300_SN_WriterDlg::CARV300_SN_WriterDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CARV300_SN_WriterDlg::IDD, pParent)
+	, strSNFileName(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -68,9 +69,7 @@ BEGIN_MESSAGE_MAP(CARV300_SN_WriterDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_COMMAND(ID_FILE_OPEN, &CARV300_SN_WriterDlg::OnFileOpen)
-	ON_BN_CLICKED(IDC_BUTTON1, &CARV300_SN_WriterDlg::OnBnClickedButton1)
-	ON_CBN_SELCHANGE(IDC_COMBOREAD, &CARV300_SN_WriterDlg::OnCbnSelchangeComboread)
+	ON_COMMAND(ID_FILE_OPEN_SN, &CARV300_SN_WriterDlg::OnFileOpenSn)
 END_MESSAGE_MAP()
 
 
@@ -106,13 +105,12 @@ BOOL CARV300_SN_WriterDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
-
-
 	m_SNListCtrl.InsertColumn(0, _T("S/N"));
 	m_SNListCtrl.InsertColumn(1, _T("Master Data"));
 	m_SNListCtrl.InsertColumn(2, _T("Slave Data"));
 	m_SNListCtrl.SetColumnWidth(0, 150);
 	m_SNListCtrl.SetColumnWidth(1, LVSCW_AUTOSIZE_USEHEADER);
+	m_SNListCtrl.SetColumnWidth(2, LVSCW_AUTOSIZE_USEHEADER);
 	m_SNListCtrl.SetExtendedStyle(
 								m_SNListCtrl.GetExtendedStyle() & (~LVS_EX_HEADERDRAGDROP) | (LVS_EX_MULTIWORKAREAS | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES));
 
@@ -167,116 +165,6 @@ HCURSOR CARV300_SN_WriterDlg::OnQueryDragIcon()
 {
 	return static_cast<HCURSOR>(m_hIcon);
 }
-
-
-
-void CARV300_SN_WriterDlg::OnFileOpen()
-{
-	char szFilter[] = "Serial Number Data (*.xls, *.xlsx) | *.xls;*.xlsx; | All Files(*.*)|*.*||";
-	
-	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY, szFilter);
-	if(IDOK == dlg.DoModal())
-	{
-			strSNFileName = dlg.GetPathName();
-
-			if(!strSNFileName.IsEmpty())
-				ExcelToListCtrl(strSNFileName);
-	}
-}
-
-
-void CARV300_SN_WriterDlg::OnBnClickedButton1()
-{
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-}
-
-
-void CARV300_SN_WriterDlg::OnCbnSelchangeComboread()
-{
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-}
-
-
-int CARV300_SN_WriterDlg::ExcelToListCtrl(CString strExcelFilePath)
-{
-	CDatabase database;
-	CString strSql;
-	CString strField;
-	CString strExcelDriver;
-	CString strDsn;
-	CString strSheet = "";
-	
-	if(strExcelFilePath.IsEmpty())
-	{
-		AfxMessageBox(_T("No file path"));
-		return FALSE;
-	}
-
-	strExcelDriver = GetExcelDriver();
-	if( strExcelDriver.IsEmpty() )
-	{
-		AfxMessageBox(_T("Fail to find out excel driver"));
-		return FALSE;
-	}
-
-	strDsn.Format(_T("ODBC;DRIVER={%s};DSN='';DBQ=%s"),strExcelDriver,strExcelFilePath);
-
-	TRY
-	{
-		if(database.Open(NULL,false,false,strDsn) == FALSE)
-			return FALSE;
-
-		CRecordset recset( &database );
-
-		int nEmptyRow = 0;
-
-		strSql.Format(_T("SELECT * FROM [%s$A1:IV65535]"), strSheet);//A1셀부터 IV:65535까지 읽음
-		
-		if(recset.Open(AFX_DB_USE_DEFAULT_TYPE, strSql, CRecordset::useExtendedFetch) == FALSE)
-			return FALSE;
-
-
-		int nFieldCount = recset.GetODBCFieldCount();//필드(열)의 개수
-		int nRowCount =0;
-		int nIndex = 0;
-		CDBVariant m_DBVariant;
-		
-		recset.MoveFirst();
-		
-		//엑셀로 부터 데이터를 읽고 리스트컨트롤에 출력
-		while( !recset.IsEOF() )
-		{
-			CString strFieldSum; //strFieldSum는 빈행이 있는지 확인하기 위해 사용하는 임시 자료형 임
-			CString strSN, strMasterInfo, strSlaveInfo;
-			
-			recset.GetFieldValue((short)0, strSN);
-			recset.GetFieldValue((short)1, strMasterInfo);
-			recset.GetFieldValue((short)2, strSlaveInfo);
-
-			
-//			if(strFruitPrice.Right(2) == _T(".0"))//끝 두자리가 .0으로 끝나는 경우 즉 엑셀에서 정수값을 실수형으로 읽어들이는 경우
-//				strFruitPrice = strFruitPrice.Left(strFruitPrice.GetLength() - 2);//.0을 삭제한 정수형으로 변환(3.0 -> 3)
-
-			InsertRow(strSN, strMasterInfo,strSlaveInfo);
-
-			recset.MoveNext();
-		}
-
-	}
-	CATCH(CDBException, e)
-	{
-		database.Close();
-		//예외 발생
-		AfxMessageBox(_T("Database error: ")+e->m_strError);
-		return FALSE;
-	}
-	END_CATCH;
-
-	database.Close();
-	return TRUE;
-	return 0;
-}
-
 
 CString CARV300_SN_WriterDlg::GetExcelDriver(void)
 {
@@ -340,4 +228,106 @@ int CARV300_SN_WriterDlg::InsertRow(CString strSN, CString strMasterDate, CStrin
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	return 0;
+}
+
+int CARV300_SN_WriterDlg::ExcelToListCtrl(CString strExcelFilePath)
+{
+	CDatabase database;
+	CString strSql;
+	CString strField;
+	CString strExcelDriver;
+	CString strDsn;
+	CString strSheet = _T("Sheet1");
+	
+	if(strExcelFilePath.IsEmpty())
+	{
+		AfxMessageBox(_T("No file path"));
+		return FALSE;
+	}
+
+	strExcelDriver = GetExcelDriver();
+	if( strExcelDriver.IsEmpty() )
+	{
+		AfxMessageBox(_T("Fail to find out excel driver"));
+		return FALSE;
+	}
+
+	strDsn.Format(_T("ODBC;DRIVER={%s};DSN='';DBQ=%s"),strExcelDriver,strExcelFilePath);
+
+	TRY
+	{
+		if(database.Open(NULL,false,false,strDsn) == FALSE)
+			return FALSE;
+
+		CRecordset recset( &database );
+
+		int nEmptyRow = 0;
+
+		strSql.Format(_T("SELECT * FROM [%s$A1:IV65535]"), strSheet);//A1셀부터 IV:65535까지 읽음
+//		recset.Open(CRecordset::forwardOnly,strSql,CRecordset::none);
+
+		if(recset.Open(AFX_DB_USE_DEFAULT_TYPE, strSql, CRecordset::useExtendedFetch) == FALSE)
+			return FALSE;
+
+
+		int nFieldCount = recset.GetODBCFieldCount();//필드(열)의 개수
+		int nRowCount =0;
+		int nIndex = 0;
+		CDBVariant m_DBVariant;
+		
+		recset.MoveFirst();
+		
+		//엑셀로 부터 데이터를 읽고 리스트컨트롤에 출력
+		while( !recset.IsEOF() )
+		{
+			CString strFieldSum; //strFieldSum는 빈행이 있는지 확인하기 위해 사용하는 임시 자료형 임
+			CString strSN, strMasterInfo, strSlaveInfo;
+			
+			recset.GetFieldValue((short)0, strSN);
+			recset.GetFieldValue((short)1, strMasterInfo);
+			recset.GetFieldValue((short)2, strSlaveInfo);
+
+			
+			if(strSN.Right(2) == _T(".0"))//끝 두자리가 .0으로 끝나는 경우 즉 엑셀에서 정수값을 실수형으로 읽어들이는 경우
+				strSN = strSN.Left(strSN.GetLength() - 2);//.0을 삭제한 정수형으로 변환(3.0 -> 3)
+
+			if(strMasterInfo.Right(2) == _T(".0"))//끝 두자리가 .0으로 끝나는 경우 즉 엑셀에서 정수값을 실수형으로 읽어들이는 경우
+				strMasterInfo = strMasterInfo.Left(strMasterInfo.GetLength() - 2);//.0을 삭제한 정수형으로 변환(3.0 -> 3)
+
+			if(strSlaveInfo.Right(2) == _T(".0"))//끝 두자리가 .0으로 끝나는 경우 즉 엑셀에서 정수값을 실수형으로 읽어들이는 경우
+				strSlaveInfo = strSlaveInfo.Left(strSlaveInfo.GetLength() - 2);//.0을 삭제한 정수형으로 변환(3.0 -> 3)
+
+			InsertRow(strSN, strMasterInfo,strSlaveInfo);
+
+			recset.MoveNext();
+		}
+
+	}
+	CATCH(CDBException, e)
+	{
+		database.Close();
+		//예외 발생
+		AfxMessageBox(_T("Database error: ")+e->m_strError);
+		return FALSE;
+	}
+	END_CATCH;
+
+	database.Close();
+	return TRUE;
+}
+
+void CARV300_SN_WriterDlg::OnFileOpenSn()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+//	char szFilter[] = "Serial Number Data (*.xls, *.xlsx) | *.xls;*.xlsx; | All Files(*.*)|*.*||";
+	CString szFilter = _T("Serial Number Data (*.xls, *.xlsx) | *.xls;*.xlsx; | All Files(*.*)|*.*||");
+
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY, (LPCTSTR)szFilter);
+	if(IDOK == dlg.DoModal())
+	{
+			strSNFileName = dlg.GetPathName();
+
+			if(!strSNFileName.IsEmpty())
+				ExcelToListCtrl(strSNFileName);
+	}
 }

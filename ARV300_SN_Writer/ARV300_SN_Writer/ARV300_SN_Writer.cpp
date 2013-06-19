@@ -15,7 +15,6 @@
 
 BEGIN_MESSAGE_MAP(CARV300_SN_WriterApp, CWinApp)
 	ON_COMMAND(ID_HELP, &CWinApp::OnHelp)
-	ON_COMMAND(ID_ABOUT_ARV300SNWRITER, &CARV300_SN_WriterApp::OnAboutArv300snwriter)
 END_MESSAGE_MAP()
 
 
@@ -93,10 +92,3 @@ BOOL CARV300_SN_WriterApp::InitInstance()
 	return FALSE;
 }
 
-
-
-void CARV300_SN_WriterApp::OnAboutArv300snwriter()
-{
-	// TODO: 여기에 명령 처리기 코드를 추가합니다.
-
-}
