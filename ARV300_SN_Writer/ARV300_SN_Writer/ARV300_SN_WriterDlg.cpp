@@ -7,10 +7,6 @@
 #include "ARV300_SN_WriterDlg.h"
 #include "afxdialogex.h"
 
-// For Database
-#include <afxdb.h>         // MFC ODBC database classes
-#include <odbcinst.h>
-
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -70,6 +66,7 @@ BEGIN_MESSAGE_MAP(CARV300_SN_WriterDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_COMMAND(ID_FILE_OPEN_SN, &CARV300_SN_WriterDlg::OnFileOpenSn)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_LIST_SN, &CARV300_SN_WriterDlg::OnNMCustomdrawListSn)
 END_MESSAGE_MAP()
 
 
@@ -330,4 +327,81 @@ void CARV300_SN_WriterDlg::OnFileOpenSn()
 			if(!strSNFileName.IsEmpty())
 				ExcelToListCtrl(strSNFileName);
 	}
+}
+
+
+void CARV300_SN_WriterDlg::OnNMCustomdrawListSn(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
+	LPNMLVCUSTOMDRAW lplvcd = reinterpret_cast<LPNMLVCUSTOMDRAW>(pNMHDR);
+    
+	switch( lplvcd->nmcd.dwDrawStage )
+    {
+    case CDDS_SUBITEM | CDDS_PREPAINT | CDDS_ITEM :               
+		if(0x2000 == m_SNListCtrl.GetItemState(pNMCD->dwItemSpec, LVIS_STATEIMAGEMASK))
+			lplvcd->clrTextBk = RGB(204, 255, 255); //체크박스가 선택된 경우 배경이 민트
+        else
+			lplvcd->clrTextBk = RGB(255, 255, 255);  //아닌경우는 배경이 흰색  
+        
+		*pResult = CDRF_NEWFONT;
+        return;
+          break;
+	}
+
+	*pResult = 0;
+}
+
+int CARV300_SN_WriterDlg::DataBaseConnection(CString strExcelFilePath)
+{
+	CDatabase database;
+	CString strSql;
+	CString strField;
+	CString strExcelDriver;
+	CString strDsn;
+	CString strSheet = _T("Sheet1");
+	
+	if(strExcelFilePath.IsEmpty())
+	{
+		AfxMessageBox(_T("No file path"));
+		return FALSE;
+	}
+
+	strExcelDriver = GetExcelDriver();
+
+	if( strExcelDriver.IsEmpty() )
+	{
+		AfxMessageBox(_T("Fail to find out excel driver"));
+		return FALSE;
+	}
+
+	strDsn.Format(_T("ODBC;DRIVER={%s};DSN='';DBQ=%s"),strExcelDriver,strExcelFilePath);
+
+    if(m_SNDB.Open(NULL,false,false,strDsn) == FALSE)
+		return FALSE;
+
+	m_SNRS.m_pDatabase = &m_SNDB;
+
+	strSql.Format(_T("SELECT * FROM [%s$A1:IV65535]"), strSheet);//A1셀부터 IV:65535까지 읽음
+//		recset.Open(CRecordset::forwardOnly,strSql,CRecordset::none);
+
+	if(m_SNRS.Open(AFX_DB_USE_DEFAULT_TYPE, strSql, CRecordset::useExtendedFetch) == FALSE)
+		return FALSE;
+
+	return TRUE;
+}
+
+int CARV300_SN_WriterDlg::DataBaseClose()
+{
+	if(m_SNRS.IsOpen())
+	{
+		m_SNRS.Close();
+	
+		if(m_SNDB.IsOpen())
+		{
+			m_SNDB.Close();
+
+		}
+	}
+
+	return 0;
 }

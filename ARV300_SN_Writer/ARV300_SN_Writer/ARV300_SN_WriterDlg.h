@@ -5,6 +5,9 @@
 #pragma once
 #include "afxcmn.h"
 
+// For Database
+#include <afxdb.h>         // MFC ODBC database classes
+#include <odbcinst.h>
 
 // CARV300_SN_WriterDlg 대화 상자
 class CARV300_SN_WriterDlg : public CDialogEx
@@ -34,9 +37,16 @@ public:
 	afx_msg void OnFileOpenSn();
 	CListCtrl m_SNListCtrl;
 	CString strSNFileName;
+	CDatabase m_SNDB;
+	CRecordset m_SNRS;
+
 private:
 	int ExcelToListCtrl(CString strExcelFilePath);
 	CString GetExcelDriver(void);
 	int InsertRow(CString strSN, CString strMasterDate, CString strSlaveDate);
+	int DataBaseConnection(CString strExcelFilePath);
+	int DataBaseClose();
 
+public:
+	afx_msg void OnNMCustomdrawListSn(NMHDR *pNMHDR, LRESULT *pResult);
 };
