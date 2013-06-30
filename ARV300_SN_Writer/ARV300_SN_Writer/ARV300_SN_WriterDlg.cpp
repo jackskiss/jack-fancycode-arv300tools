@@ -11,8 +11,8 @@
 #define new DEBUG_NEW
 #endif
 
-
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
+#define PORT_STATUS_NOT_OPEN    "Not Open"
 
 class CAboutDlg : public CDialogEx
 {
@@ -59,6 +59,12 @@ void CARV300_SN_WriterDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_LIST_SN, m_SNListCtrl);
+	DDX_Control(pDX, IDC_MSN_EDIT, m_editMSN);
+	DDX_Control(pDX, IDC_SSN_EDIT, m_editSSN);
+	DDX_Control(pDX, IDC_MDATE_STATIC, m_staticMDATE);
+	DDX_Control(pDX, IDC_SDATE_STATIC, m_staticSDATE);
+	DDX_Control(pDX, IDC_MPORT_STATIC, m_staticMPORT);
+	DDX_Control(pDX, IDC_SPORT_STATIC, m_staticSPORT);
 }
 
 BEGIN_MESSAGE_MAP(CARV300_SN_WriterDlg, CDialogEx)
@@ -67,6 +73,9 @@ BEGIN_MESSAGE_MAP(CARV300_SN_WriterDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_COMMAND(ID_FILE_OPEN_SN, &CARV300_SN_WriterDlg::OnFileOpenSn)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_LIST_SN, &CARV300_SN_WriterDlg::OnNMCustomdrawListSn)
+	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_SN, &CARV300_SN_WriterDlg::OnLvnItemchangedListSn)
+	ON_BN_CLICKED(IDC_WRITE_BTN, &CARV300_SN_WriterDlg::OnBnClickedWriteBtn)
+	ON_BN_CLICKED(IDC_READ_BTN, &CARV300_SN_WriterDlg::OnBnClickedReadBtn)
 END_MESSAGE_MAP()
 
 
@@ -110,6 +119,17 @@ BOOL CARV300_SN_WriterDlg::OnInitDialog()
 	m_SNListCtrl.SetColumnWidth(2, LVSCW_AUTOSIZE_USEHEADER);
 	m_SNListCtrl.SetExtendedStyle(
 								m_SNListCtrl.GetExtendedStyle() & (~LVS_EX_HEADERDRAGDROP) | (LVS_EX_MULTIWORKAREAS | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES));
+
+
+	/* Set Default Vaule */
+	m_WType = MS_BOTH;
+	m_RType = MS_BOTH;
+
+    m_statusMPort = FALSE; // Master Port Status
+	m_statusSPort = FALSE; // Slave Port Status
+
+	m_staticMPORT.SetWindowTextW(_T(PORT_STATUS_NOT_OPEN));
+	m_staticSPORT.SetWindowTextW(_T(PORT_STATUS_NOT_OPEN));
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -405,3 +425,77 @@ int CARV300_SN_WriterDlg::DataBaseClose()
 
 	return 0;
 }
+
+
+void CARV300_SN_WriterDlg::OnLvnItemchangedListSn(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+
+
+	// Read Current Row
+	m_curRSIndex = pNMLV->iItem;
+	
+	// Read Data - Serial Number, Write Date
+	m_strMSN = m_SNListCtrl.GetItemText(m_curRSIndex,0);
+	m_strSSN = m_SNListCtrl.GetItemText(m_curRSIndex,0);
+	m_strMDate = m_SNListCtrl.GetItemText(m_curRSIndex,1);
+	m_strSDate = m_SNListCtrl.GetItemText(m_curRSIndex,2);
+//	m_strMPort
+//	m_strSPort
+
+	// Display Information
+	m_editMSN.SetWindowTextW((LPCTSTR)m_strMSN);
+	m_editSSN.SetWindowTextW((LPCTSTR)m_strSSN);
+	m_staticMDATE.SetWindowTextW((LPCTSTR)m_strMDate);
+	m_staticSDATE.SetWindowTextW((LPCTSTR)m_strSDate);
+
+	*pResult = 0;
+}
+
+
+int CARV300_SN_WriterDlg::master_display_info(CString SerialNumber, CString WriteDate)
+{
+
+	return 0;
+}
+
+
+int CARV300_SN_WriterDlg::slave_display_info(CString SerialNumber, CString WriteDate)
+{
+	return 0;
+}
+
+
+void CARV300_SN_WriterDlg::OnBnClickedWriteBtn()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	if(!(m_statusMPort || m_statusSPort) )
+	{
+		AfxMessageBox(IDS_ERROR_NO_PORT_TO_WRITE ,NULL,IDOK);
+		return;
+	}
+
+	switch(m_WType)
+	{
+	case MS_BOTH: /* Master with Slave */
+		break;
+	case M_ONLY:
+	case S_ONLY:
+	default:
+		break;
+	}
+}
+
+
+void CARV300_SN_WriterDlg::OnBnClickedReadBtn()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	if(!(m_statusMPort || m_statusSPort) )
+	{
+		AfxMessageBox(IDS_ERROR_NO_PORT_TO_READ ,NULL,IDOK);
+		return;
+	}
+}
+
+
