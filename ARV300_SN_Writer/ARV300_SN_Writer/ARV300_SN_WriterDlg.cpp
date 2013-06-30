@@ -476,14 +476,14 @@ void CARV300_SN_WriterDlg::OnBnClickedWriteBtn()
 		return;
 	}
 
-	switch(m_WType)
+	if(m_statusMPort && (m_WType == MS_BOTH || m_WType == M_ONLY))
 	{
-	case MS_BOTH: /* Master with Slave */
-		break;
-	case M_ONLY:
-	case S_ONLY:
-	default:
-		break;
+		// Master Write Sequence
+	}
+
+	if(m_statusMPort && (m_WType == MS_BOTH || m_WType == S_ONLY))
+	{
+		// Slave Write Sequence
 	}
 }
 
@@ -496,6 +496,25 @@ void CARV300_SN_WriterDlg::OnBnClickedReadBtn()
 		AfxMessageBox(IDS_ERROR_NO_PORT_TO_READ ,NULL,IDOK);
 		return;
 	}
+
+	if(m_statusMPort && (m_RType == MS_BOTH || m_RType == M_ONLY))
+	{
+		// Master Read Sequence
+	}
+
+	if(m_statusMPort && (m_WType == MS_BOTH || m_RType == S_ONLY))
+	{
+		// Slave Read Sequence
+	}
+}
+
+int CARV300_SN_WriterDlg::SNWrite(MS_TYPE type)
+{
+	return 0;
 }
 
 
+int CARV300_SN_WriterDlg::SNRead(MS_TYPE type)
+{
+	return 0;
+}

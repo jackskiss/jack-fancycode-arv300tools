@@ -17,6 +17,10 @@ typedef enum {
 	S_ONLY
 } WR_Type;
 
+typedef enum {
+	MASTER,
+	SLAVE
+} MS_TYPE;
 
 // CARV300_SN_WriterDlg 대화 상자
 class CARV300_SN_WriterDlg : public CDialogEx
@@ -87,4 +91,7 @@ public:
 	CStatic m_staticSPORT;
 	afx_msg void OnBnClickedWriteBtn();
 	afx_msg void OnBnClickedReadBtn();
+private:
+	static int SNWrite(MS_TYPE type);
+	static int SNRead(MS_TYPE type);
 };
