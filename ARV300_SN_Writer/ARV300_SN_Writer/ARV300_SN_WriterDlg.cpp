@@ -510,7 +510,34 @@ void CARV300_SN_WriterDlg::OnBnClickedReadBtn()
 
 int CARV300_SN_WriterDlg::SNWrite(MS_TYPE type)
 {
-	return 0;
+	int ret = ARV300_ERROR_NO_ERROR;
+
+	if(type == MASTER)
+	{
+		// Write Comport 
+		
+	} else if (type == SLAVE) {
+	
+	} else {
+		ret = -(ARV300_ERROR_NO_MS_TYPE);
+	}
+	
+	//	Write Procedure
+	/* Write Command */
+	/* Wait for response */
+	/* If success to write, change excel file */
+	if(DataBaseConnection(strSNFileName))
+	{
+		m_SNRS.Edit();
+		m_SNRS.LoadFields();
+
+		m_SNRS.LoadFields(
+			Update();
+	}
+	else
+		ret = -(ARV300_ERROR_DB_CONNECTION_FAIL);
+
+	return ret;
 }
 
 

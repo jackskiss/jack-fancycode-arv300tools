@@ -11,6 +11,12 @@
 #include "afxwin.h"
 
 
+enum {
+	ARV300_ERROR_NO_ERROR,
+	ARV300_ERROR_NO_MS_TYPE,
+	ARV300_ERROR_DB_CONNECTION_FAIL,
+};
+
 typedef enum {
 	MS_BOTH,
 	M_ONLY,
@@ -92,6 +98,6 @@ public:
 	afx_msg void OnBnClickedWriteBtn();
 	afx_msg void OnBnClickedReadBtn();
 private:
-	static int SNWrite(MS_TYPE type);
-	static int SNRead(MS_TYPE type);
+	int SNWrite(MS_TYPE type);
+	int SNRead(MS_TYPE type);
 };
