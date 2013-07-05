@@ -9,14 +9,22 @@
 #include <afxdb.h>         // MFC ODBC database classes
 #include <odbcinst.h>
 #include "afxwin.h"
+#include "ARV300_COMPort.h"
 
 
 enum {
 	ARV300_ERROR_NO_ERROR,
 	ARV300_ERROR_NO_MS_TYPE,
 	ARV300_ERROR_DB_CONNECTION_FAIL,
+	ARV300_ERROR_DB_ADDROW,
+	ARV300_ERROR_COMMIT_FILESAVE,
 };
 
+enum {
+	ARV300_DB_FIELD_SN,
+	ARV300_DB_FIELD_MASTER,
+	ARV300_DB_FIELD_SLAVE,
+}; 
 typedef enum {
 	MS_BOTH,
 	M_ONLY,
@@ -55,16 +63,12 @@ protected:
 public:
 	afx_msg void OnFileOpenSn();
 	CListCtrl m_SNListCtrl;
-	CString strSNFileName;
-	CDatabase m_SNDB;
-	CRecordset m_SNRS;
+	CString m_strSNFileName;
+	CARV300_COMPort m_dlgARV300;
 
 private:
 	int ExcelToListCtrl(CString strExcelFilePath);
-	CString GetExcelDriver(void);
 	int InsertRow(CString strSN, CString strMasterDate, CString strSlaveDate);
-	int DataBaseConnection(CString strExcelFilePath);
-	int DataBaseClose();
 	int m_curRSIndex; // Current Recordset Index 
 	BOOL m_statusMPort; // Master Port Status
 	BOOL m_statusSPort; // Slave Port Status
@@ -85,9 +89,15 @@ private:
 public:
 	afx_msg void OnNMCustomdrawListSn(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnLvnItemchangedListSn(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnCbnSelchangeComboWtype();
+	afx_msg void OnCbnSelchangeComboRtype();
+	afx_msg void OnBnClickedWriteBtn();
+	afx_msg void OnBnClickedReadBtn();
+
 private:
 	static int master_display_info(CString SerialNumber, CString WriteDate);
 	static int slave_display_info(CString SerialNumber, CString WriteDate);
+
 public:
 	CEdit m_editMSN;
 	CEdit m_editSSN;
@@ -95,9 +105,13 @@ public:
 	CStatic m_staticSDATE;
 	CStatic m_staticMPORT;
 	CStatic m_staticSPORT;
-	afx_msg void OnBnClickedWriteBtn();
-	afx_msg void OnBnClickedReadBtn();
+	CComboBox m_comboWType;
+	CComboBox m_comboRType;
 private:
 	int SNWrite(MS_TYPE type);
 	int SNRead(MS_TYPE type);
+public:
+	afx_msg void OnFileOption();
+private:
+	bool ARV300_WRButtonEnable(bool Enable);
 };

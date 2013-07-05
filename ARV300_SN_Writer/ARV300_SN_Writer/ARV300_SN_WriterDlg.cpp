@@ -6,6 +6,7 @@
 #include "ARV300_SN_Writer.h"
 #include "ARV300_SN_WriterDlg.h"
 #include "afxdialogex.h"
+#include "cspreadsheet.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -13,6 +14,9 @@
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 #define PORT_STATUS_NOT_OPEN    "Not Open"
+#define ARV300_SPREEDSHEET_NAME "Sheet1"
+
+#define ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW	2
 
 class CAboutDlg : public CDialogEx
 {
@@ -50,7 +54,7 @@ END_MESSAGE_MAP()
 
 CARV300_SN_WriterDlg::CARV300_SN_WriterDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CARV300_SN_WriterDlg::IDD, pParent)
-	, strSNFileName(_T(""))
+	, m_strSNFileName(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -65,6 +69,8 @@ void CARV300_SN_WriterDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_SDATE_STATIC, m_staticSDATE);
 	DDX_Control(pDX, IDC_MPORT_STATIC, m_staticMPORT);
 	DDX_Control(pDX, IDC_SPORT_STATIC, m_staticSPORT);
+	DDX_Control(pDX, IDC_COMBO_WTYPE, m_comboWType);
+	DDX_Control(pDX, IDC_COMBO_RTYPE, m_comboRType);
 }
 
 BEGIN_MESSAGE_MAP(CARV300_SN_WriterDlg, CDialogEx)
@@ -76,6 +82,9 @@ BEGIN_MESSAGE_MAP(CARV300_SN_WriterDlg, CDialogEx)
 	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_SN, &CARV300_SN_WriterDlg::OnLvnItemchangedListSn)
 	ON_BN_CLICKED(IDC_WRITE_BTN, &CARV300_SN_WriterDlg::OnBnClickedWriteBtn)
 	ON_BN_CLICKED(IDC_READ_BTN, &CARV300_SN_WriterDlg::OnBnClickedReadBtn)
+	ON_CBN_SELCHANGE(IDC_COMBO_WTYPE, &CARV300_SN_WriterDlg::OnCbnSelchangeComboWtype)
+	ON_CBN_SELCHANGE(IDC_COMBO_RTYPE, &CARV300_SN_WriterDlg::OnCbnSelchangeComboRtype)
+	ON_COMMAND(ID_FILE_OPTION, &CARV300_SN_WriterDlg::OnFileOption)
 END_MESSAGE_MAP()
 
 
@@ -114,7 +123,7 @@ BOOL CARV300_SN_WriterDlg::OnInitDialog()
 	m_SNListCtrl.InsertColumn(0, _T("S/N"));
 	m_SNListCtrl.InsertColumn(1, _T("Master Data"));
 	m_SNListCtrl.InsertColumn(2, _T("Slave Data"));
-	m_SNListCtrl.SetColumnWidth(0, 150);
+	m_SNListCtrl.SetColumnWidth(0, 100);
 	m_SNListCtrl.SetColumnWidth(1, LVSCW_AUTOSIZE_USEHEADER);
 	m_SNListCtrl.SetColumnWidth(2, LVSCW_AUTOSIZE_USEHEADER);
 	m_SNListCtrl.SetExtendedStyle(
@@ -124,12 +133,17 @@ BOOL CARV300_SN_WriterDlg::OnInitDialog()
 	/* Set Default Vaule */
 	m_WType = MS_BOTH;
 	m_RType = MS_BOTH;
+	m_comboWType.SetCurSel(MS_BOTH);
+	m_comboRType.SetCurSel(MS_BOTH);
+//	m_comboWType.EnableWindow(FALSE);
+//	m_comboRType.EnableWindow(FALSE);
 
     m_statusMPort = FALSE; // Master Port Status
 	m_statusSPort = FALSE; // Slave Port Status
+	ARV300_WRButtonEnable(FALSE);
 
-	m_staticMPORT.SetWindowTextW(_T(PORT_STATUS_NOT_OPEN));
-	m_staticSPORT.SetWindowTextW(_T(PORT_STATUS_NOT_OPEN));
+	m_staticMPORT.SetWindowText(_T(PORT_STATUS_NOT_OPEN));
+	m_staticSPORT.SetWindowText(_T(PORT_STATUS_NOT_OPEN));
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -183,35 +197,6 @@ HCURSOR CARV300_SN_WriterDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-CString CARV300_SN_WriterDlg::GetExcelDriver(void)
-{
-	TCHAR szBuf[2048]={0,};
-	WORD cbBufMax = 2047;
-	WORD cbBufOut;
-	LPCTSTR pszBuf = szBuf;
-	CString strExcelDriver;
-
-	//설치된 드라이버의 이름을 구함 ("odbcinst.h"에 정의됨)
-	if(!SQLGetInstalledDrivers(szBuf,cbBufMax,& cbBufOut))
-		return _T("");
-
-	//드라이버를 구함
-	do
-	{
-		if( _tcsstr(pszBuf, _T("Excel") ) != 0 )
-		{
-			//찾음
-			strExcelDriver = CString( pszBuf );
-			break;
-		}
-		pszBuf = _tcschr( pszBuf, _T('\0') ) + 1;
-	}
-	while( pszBuf[1] != _T('\0') );
-
-	return strExcelDriver;
-}
-
-
 int CARV300_SN_WriterDlg::InsertRow(CString strSN, CString strMasterDate, CString strSlaveDate)
 {
 
@@ -248,88 +233,40 @@ int CARV300_SN_WriterDlg::InsertRow(CString strSN, CString strMasterDate, CStrin
 }
 
 int CARV300_SN_WriterDlg::ExcelToListCtrl(CString strExcelFilePath)
-{
-	CDatabase database;
-	CString strSql;
-	CString strField;
-	CString strExcelDriver;
-	CString strDsn;
-	CString strSheet = _T("Sheet1");
-	
+{	
 	if(strExcelFilePath.IsEmpty())
 	{
 		AfxMessageBox(_T("No file path"));
 		return FALSE;
 	}
 
-	strExcelDriver = GetExcelDriver();
-	if( strExcelDriver.IsEmpty() )
+	CSpreadSheet SS((LPCTSTR)strExcelFilePath, ARV300_SPREEDSHEET_NAME);
+
+	long row_count = SS.GetTotalRows();
+	
+	CStringArray sa;
+	CString strSN, strMasterInfo, strSlaveInfo;
+
+	for(int i=2;i<row_count;i++)
 	{
-		AfxMessageBox(_T("Fail to find out excel driver"));
-		return FALSE;
-	}
-
-	strDsn.Format(_T("ODBC;DRIVER={%s};DSN='';DBQ=%s"),strExcelDriver,strExcelFilePath);
-
-	TRY
-	{
-		if(database.Open(NULL,false,false,strDsn) == FALSE)
-			return FALSE;
-
-		CRecordset recset( &database );
-
-		int nEmptyRow = 0;
-
-		strSql.Format(_T("SELECT * FROM [%s$A1:IV65535]"), strSheet);//A1셀부터 IV:65535까지 읽음
-//		recset.Open(CRecordset::forwardOnly,strSql,CRecordset::none);
-
-		if(recset.Open(AFX_DB_USE_DEFAULT_TYPE, strSql, CRecordset::useExtendedFetch) == FALSE)
-			return FALSE;
-
-
-		int nFieldCount = recset.GetODBCFieldCount();//필드(열)의 개수
-		int nRowCount =0;
-		int nIndex = 0;
-		CDBVariant m_DBVariant;
-		
-		recset.MoveFirst();
-		
-		//엑셀로 부터 데이터를 읽고 리스트컨트롤에 출력
-		while( !recset.IsEOF() )
-		{
-			CString strFieldSum; //strFieldSum는 빈행이 있는지 확인하기 위해 사용하는 임시 자료형 임
-			CString strSN, strMasterInfo, strSlaveInfo;
-			
-			recset.GetFieldValue((short)0, strSN);
-			recset.GetFieldValue((short)1, strMasterInfo);
-			recset.GetFieldValue((short)2, strSlaveInfo);
+		SS.ReadRow(sa,i);
+        strSN = sa.GetAt(0);
+        strMasterInfo = sa.GetAt(1);
+        strSlaveInfo = sa.GetAt(2);
 
 			
-			if(strSN.Right(2) == _T(".0"))//끝 두자리가 .0으로 끝나는 경우 즉 엑셀에서 정수값을 실수형으로 읽어들이는 경우
-				strSN = strSN.Left(strSN.GetLength() - 2);//.0을 삭제한 정수형으로 변환(3.0 -> 3)
+		if(strSN.Right(2) == _T(".0"))//끝 두자리가 .0으로 끝나는 경우 즉 엑셀에서 정수값을 실수형으로 읽어들이는 경우
+			strSN = strSN.Left(strSN.GetLength() - 2);//.0을 삭제한 정수형으로 변환(3.0 -> 3)
 
-			if(strMasterInfo.Right(2) == _T(".0"))//끝 두자리가 .0으로 끝나는 경우 즉 엑셀에서 정수값을 실수형으로 읽어들이는 경우
-				strMasterInfo = strMasterInfo.Left(strMasterInfo.GetLength() - 2);//.0을 삭제한 정수형으로 변환(3.0 -> 3)
+		if(strMasterInfo.Right(2) == _T(".0"))//끝 두자리가 .0으로 끝나는 경우 즉 엑셀에서 정수값을 실수형으로 읽어들이는 경우
+			strMasterInfo = strMasterInfo.Left(strMasterInfo.GetLength() - 2);//.0을 삭제한 정수형으로 변환(3.0 -> 3)
 
-			if(strSlaveInfo.Right(2) == _T(".0"))//끝 두자리가 .0으로 끝나는 경우 즉 엑셀에서 정수값을 실수형으로 읽어들이는 경우
-				strSlaveInfo = strSlaveInfo.Left(strSlaveInfo.GetLength() - 2);//.0을 삭제한 정수형으로 변환(3.0 -> 3)
+		if(strSlaveInfo.Right(2) == _T(".0"))//끝 두자리가 .0으로 끝나는 경우 즉 엑셀에서 정수값을 실수형으로 읽어들이는 경우
+			strSlaveInfo = strSlaveInfo.Left(strSlaveInfo.GetLength() - 2);//.0을 삭제한 정수형으로 변환(3.0 -> 3)
 
-			InsertRow(strSN, strMasterInfo,strSlaveInfo);
-
-			recset.MoveNext();
-		}
-
+		InsertRow(strSN, strMasterInfo,strSlaveInfo);
 	}
-	CATCH(CDBException, e)
-	{
-		database.Close();
-		//예외 발생
-		AfxMessageBox(_T("Database error: ")+e->m_strError);
-		return FALSE;
-	}
-	END_CATCH;
 
-	database.Close();
 	return TRUE;
 }
 
@@ -342,10 +279,10 @@ void CARV300_SN_WriterDlg::OnFileOpenSn()
 	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY, (LPCTSTR)szFilter);
 	if(IDOK == dlg.DoModal())
 	{
-			strSNFileName = dlg.GetPathName();
+			m_strSNFileName = dlg.GetPathName();
 
-			if(!strSNFileName.IsEmpty())
-				ExcelToListCtrl(strSNFileName);
+			if(!m_strSNFileName.IsEmpty())
+				ExcelToListCtrl(m_strSNFileName);
 	}
 }
 
@@ -371,62 +308,6 @@ void CARV300_SN_WriterDlg::OnNMCustomdrawListSn(NMHDR *pNMHDR, LRESULT *pResult)
 	*pResult = 0;
 }
 
-int CARV300_SN_WriterDlg::DataBaseConnection(CString strExcelFilePath)
-{
-	CDatabase database;
-	CString strSql;
-	CString strField;
-	CString strExcelDriver;
-	CString strDsn;
-	CString strSheet = _T("Sheet1");
-	
-	if(strExcelFilePath.IsEmpty())
-	{
-		AfxMessageBox(_T("No file path"));
-		return FALSE;
-	}
-
-	strExcelDriver = GetExcelDriver();
-
-	if( strExcelDriver.IsEmpty() )
-	{
-		AfxMessageBox(_T("Fail to find out excel driver"));
-		return FALSE;
-	}
-
-	strDsn.Format(_T("ODBC;DRIVER={%s};DSN='';DBQ=%s"),strExcelDriver,strExcelFilePath);
-
-    if(m_SNDB.Open(NULL,false,false,strDsn) == FALSE)
-		return FALSE;
-
-	m_SNRS.m_pDatabase = &m_SNDB;
-
-	strSql.Format(_T("SELECT * FROM [%s$A1:IV65535]"), strSheet);//A1셀부터 IV:65535까지 읽음
-//		recset.Open(CRecordset::forwardOnly,strSql,CRecordset::none);
-
-	if(m_SNRS.Open(AFX_DB_USE_DEFAULT_TYPE, strSql, CRecordset::useExtendedFetch) == FALSE)
-		return FALSE;
-
-	return TRUE;
-}
-
-int CARV300_SN_WriterDlg::DataBaseClose()
-{
-	if(m_SNRS.IsOpen())
-	{
-		m_SNRS.Close();
-	
-		if(m_SNDB.IsOpen())
-		{
-			m_SNDB.Close();
-
-		}
-	}
-
-	return 0;
-}
-
-
 void CARV300_SN_WriterDlg::OnLvnItemchangedListSn(NMHDR *pNMHDR, LRESULT *pResult)
 {
 	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
@@ -445,10 +326,10 @@ void CARV300_SN_WriterDlg::OnLvnItemchangedListSn(NMHDR *pNMHDR, LRESULT *pResul
 //	m_strSPort
 
 	// Display Information
-	m_editMSN.SetWindowTextW((LPCTSTR)m_strMSN);
-	m_editSSN.SetWindowTextW((LPCTSTR)m_strSSN);
-	m_staticMDATE.SetWindowTextW((LPCTSTR)m_strMDate);
-	m_staticSDATE.SetWindowTextW((LPCTSTR)m_strSDate);
+	m_editMSN.SetWindowText((LPCTSTR)m_strMSN);
+	m_editSSN.SetWindowText((LPCTSTR)m_strSSN);
+	m_staticMDATE.SetWindowText((LPCTSTR)m_strMDate);
+	m_staticSDATE.SetWindowText((LPCTSTR)m_strSDate);
 
 	*pResult = 0;
 }
@@ -470,6 +351,9 @@ int CARV300_SN_WriterDlg::slave_display_info(CString SerialNumber, CString Write
 void CARV300_SN_WriterDlg::OnBnClickedWriteBtn()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	CString errstr;
+	int ret;
+
 	if(!(m_statusMPort || m_statusSPort) )
 	{
 		AfxMessageBox(IDS_ERROR_NO_PORT_TO_WRITE ,NULL,IDOK);
@@ -478,12 +362,20 @@ void CARV300_SN_WriterDlg::OnBnClickedWriteBtn()
 
 	if(m_statusMPort && (m_WType == MS_BOTH || m_WType == M_ONLY))
 	{
-		// Master Write Sequence
+		if((ret = SNWrite(MASTER)) != ARV300_ERROR_NO_ERROR)
+		{
+			errstr.Format("Error: SNWrite %d", ret);
+			AfxMessageBox(LPCTSTR(errstr));
+		}
 	}
 
 	if(m_statusMPort && (m_WType == MS_BOTH || m_WType == S_ONLY))
 	{
-		// Slave Write Sequence
+		if(SNWrite(SLAVE) != ARV300_ERROR_NO_ERROR)
+		{
+			errstr.Format("Error: SNWrite %d", ret);
+			AfxMessageBox(LPCTSTR(errstr));
+		}
 	}
 }
 
@@ -511,32 +403,49 @@ void CARV300_SN_WriterDlg::OnBnClickedReadBtn()
 int CARV300_SN_WriterDlg::SNWrite(MS_TYPE type)
 {
 	int ret = ARV300_ERROR_NO_ERROR;
-
-	if(type == MASTER)
-	{
-		// Write Comport 
-		
-	} else if (type == SLAVE) {
 	
+
+	if(type == MASTER || type == SLAVE)
+	{
+		CSpreadSheet SS((LPCTSTR)m_strSNFileName,ARV300_SPREEDSHEET_NAME);
+		CStringArray old_sa, new_sa;
+
+		SS.ReadRow(old_sa, ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW+m_curRSIndex);
+
+		CTime curtime = CTime::GetCurrentTime();
+		CString strtime = curtime.Format("%c");
+
+		new_sa.Add(old_sa.GetAt(ARV300_DB_FIELD_SN));
+		if(type == MASTER)
+		{
+			new_sa.Add((LPCTSTR)strtime);
+			new_sa.Add(old_sa.GetAt(ARV300_DB_FIELD_MASTER));
+		} else if (type == SLAVE) {
+			new_sa.Add(old_sa.GetAt(ARV300_DB_FIELD_SLAVE));
+			new_sa.Add((LPCTSTR)strtime);
+		}
+
+		if(SS.AddRow(new_sa, ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW+m_curRSIndex, true))
+		{
+			if(SS.Commit())
+			{
+				if(type == MASTER)
+					m_SNListCtrl.SetItemText(m_curRSIndex, ARV300_DB_FIELD_MASTER, (LPCTSTR)strtime);
+				else
+					m_SNListCtrl.SetItemText(m_curRSIndex, ARV300_DB_FIELD_SLAVE, (LPCTSTR)strtime);
+				
+				ret = ARV300_ERROR_NO_ERROR;
+			}
+			else
+			{
+				ret = -(ARV300_ERROR_COMMIT_FILESAVE);
+			}
+		} else {
+			ret = -(ARV300_ERROR_DB_ADDROW);
+		}
 	} else {
 		ret = -(ARV300_ERROR_NO_MS_TYPE);
 	}
-	
-	//	Write Procedure
-	/* Write Command */
-	/* Wait for response */
-	/* If success to write, change excel file */
-	if(DataBaseConnection(strSNFileName))
-	{
-		m_SNRS.Edit();
-		m_SNRS.LoadFields();
-
-		m_SNRS.LoadFields(
-			Update();
-	}
-	else
-		ret = -(ARV300_ERROR_DB_CONNECTION_FAIL);
-
 	return ret;
 }
 
@@ -544,4 +453,39 @@ int CARV300_SN_WriterDlg::SNWrite(MS_TYPE type)
 int CARV300_SN_WriterDlg::SNRead(MS_TYPE type)
 {
 	return 0;
+}
+
+
+void CARV300_SN_WriterDlg::OnCbnSelchangeComboWtype()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다
+	m_WType = (WR_Type)m_comboWType.GetCurSel();
+}
+
+
+void CARV300_SN_WriterDlg::OnCbnSelchangeComboRtype()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	m_RType = (WR_Type)m_comboRType.GetCurSel();
+}
+
+
+void CARV300_SN_WriterDlg::OnFileOption()
+{
+	if(m_dlgARV300.DoModal())
+	{
+		// 
+		m_statusMPort = TRUE;
+		m_statusSPort = TRUE;
+		ARV300_WRButtonEnable(m_statusMPort || m_statusSPort);
+	}
+}
+
+
+bool CARV300_SN_WriterDlg::ARV300_WRButtonEnable(bool Enable)
+{
+	GetDlgItem(IDC_WRITE_BTN)->EnableWindow(Enable);
+	GetDlgItem(IDC_READ_BTN)->EnableWindow(Enable);
+
+	return false;
 }
