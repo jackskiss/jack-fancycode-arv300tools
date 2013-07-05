@@ -85,6 +85,7 @@ BEGIN_MESSAGE_MAP(CARV300_SN_WriterDlg, CDialogEx)
 	ON_CBN_SELCHANGE(IDC_COMBO_WTYPE, &CARV300_SN_WriterDlg::OnCbnSelchangeComboWtype)
 	ON_CBN_SELCHANGE(IDC_COMBO_RTYPE, &CARV300_SN_WriterDlg::OnCbnSelchangeComboRtype)
 	ON_COMMAND(ID_FILE_OPTION, &CARV300_SN_WriterDlg::OnFileOption)
+	ON_COMMAND(ID_HELP_ABOUT, &CARV300_SN_WriterDlg::OnHelpAbout)
 END_MESSAGE_MAP()
 
 
@@ -121,8 +122,8 @@ BOOL CARV300_SN_WriterDlg::OnInitDialog()
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
 	m_SNListCtrl.InsertColumn(0, _T("S/N"));
-	m_SNListCtrl.InsertColumn(1, _T("Master Data"));
-	m_SNListCtrl.InsertColumn(2, _T("Slave Data"));
+	m_SNListCtrl.InsertColumn(1, _T("Master Date"));
+	m_SNListCtrl.InsertColumn(2, _T("Slave Date"));
 	m_SNListCtrl.SetColumnWidth(0, 100);
 	m_SNListCtrl.SetColumnWidth(1, LVSCW_AUTOSIZE_USEHEADER);
 	m_SNListCtrl.SetColumnWidth(2, LVSCW_AUTOSIZE_USEHEADER);
@@ -295,11 +296,19 @@ void CARV300_SN_WriterDlg::OnNMCustomdrawListSn(NMHDR *pNMHDR, LRESULT *pResult)
 	switch( lplvcd->nmcd.dwDrawStage )
     {
     case CDDS_SUBITEM | CDDS_PREPAINT | CDDS_ITEM :               
-		if(0x2000 == m_SNListCtrl.GetItemState(pNMCD->dwItemSpec, LVIS_STATEIMAGEMASK))
-			lplvcd->clrTextBk = RGB(204, 255, 255); //체크박스가 선택된 경우 배경이 민트
-        else
-			lplvcd->clrTextBk = RGB(255, 255, 255);  //아닌경우는 배경이 흰색  
-        
+//		if(0x2000 == m_SNListCtrl.GetItemState(pNMCD->dwItemSpec, LVIS_STATEIMAGEMASK))
+//			lplvcd->clrTextBk = RGB(204, 255, 255); //체크박스가 선택된 경우 배경이 민트
+//        else
+//			lplvcd->clrTextBk = RGB(255, 255, 255);  //아닌경우는 배경이 흰색  
+		
+		if(!m_SNListCtrl.GetItemText(m_curRSIndex, ARV300_DB_FIELD_MASTER).IsEmpty() && 
+			!m_SNListCtrl.GetItemText(m_curRSIndex, ARV300_DB_FIELD_SLAVE).IsEmpty())		
+			lplvcd->clrTextBk = RGB(204, 255, 255);
+		else if(!m_SNListCtrl.GetItemText(m_curRSIndex, ARV300_DB_FIELD_SLAVE).IsEmpty())
+			lplvcd->clrTextBk = RGB(204, 200, 255);
+		else if(!m_SNListCtrl.GetItemText(m_curRSIndex, ARV300_DB_FIELD_MASTER).IsEmpty())
+			lplvcd->clrTextBk = RGB(204, 200, 200);
+
 		*pResult = CDRF_NEWFONT;
         return;
           break;
@@ -430,10 +439,15 @@ int CARV300_SN_WriterDlg::SNWrite(MS_TYPE type)
 			if(SS.Commit())
 			{
 				if(type == MASTER)
+				{
 					m_SNListCtrl.SetItemText(m_curRSIndex, ARV300_DB_FIELD_MASTER, (LPCTSTR)strtime);
+					m_staticMDATE.SetWindowTextA((LPCTSTR)strtime);
+				}
 				else
+				{
 					m_SNListCtrl.SetItemText(m_curRSIndex, ARV300_DB_FIELD_SLAVE, (LPCTSTR)strtime);
-				
+					m_staticSDATE.SetWindowTextA((LPCTSTR)strtime);
+				}
 				ret = ARV300_ERROR_NO_ERROR;
 			}
 			else
@@ -488,4 +502,11 @@ bool CARV300_SN_WriterDlg::ARV300_WRButtonEnable(bool Enable)
 	GetDlgItem(IDC_READ_BTN)->EnableWindow(Enable);
 
 	return false;
+}
+
+
+void CARV300_SN_WriterDlg::OnHelpAbout()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+	m_dlgAbout.DoModal();
 }

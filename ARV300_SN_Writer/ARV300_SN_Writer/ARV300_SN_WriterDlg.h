@@ -10,6 +10,7 @@
 #include <odbcinst.h>
 #include "afxwin.h"
 #include "ARV300_COMPort.h"
+#include "ARV300About.h"
 
 
 enum {
@@ -65,6 +66,7 @@ public:
 	CListCtrl m_SNListCtrl;
 	CString m_strSNFileName;
 	CARV300_COMPort m_dlgARV300;
+	CARV300About m_dlgAbout;
 
 private:
 	int ExcelToListCtrl(CString strExcelFilePath);
@@ -114,4 +116,6 @@ public:
 	afx_msg void OnFileOption();
 private:
 	bool ARV300_WRButtonEnable(bool Enable);
+public:
+	afx_msg void OnHelpAbout();
 };

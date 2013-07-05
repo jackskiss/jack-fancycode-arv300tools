@@ -101,6 +101,7 @@
     <None Include="res\ARV300_SN_Writer.rc2" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ARV300About.h" />
     <ClInclude Include="ARV300_COMPort.h" />
     <ClInclude Include="ARV300_SN_Writer.h" />
     <ClInclude Include="ARV300_SN_WriterDlg.h" />
@@ -110,6 +111,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ARV300About.cpp" />
     <ClCompile Include="ARV300_COMPort.cpp" />
     <ClCompile Include="ARV300_SN_Writer.cpp" />
     <ClCompile Include="ARV300_SN_WriterDlg.cpp" />
