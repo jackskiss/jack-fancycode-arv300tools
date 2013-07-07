@@ -293,9 +293,10 @@ void CARV300_SN_WriterDlg::OnNMCustomdrawListSn(NMHDR *pNMHDR, LRESULT *pResult)
 	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
 	LPNMLVCUSTOMDRAW lplvcd = reinterpret_cast<LPNMLVCUSTOMDRAW>(pNMHDR);
     
-	switch( lplvcd->nmcd.dwDrawStage )
+	switch( pNMCD->dwDrawStage )
     {
-    case CDDS_SUBITEM | CDDS_PREPAINT | CDDS_ITEM :               
+//    case CDDS_SUBITEM | CDDS_PREPAINT | CDDS_ITEM :               
+    case CDDS_PREPAINT:               
 //		if(0x2000 == m_SNListCtrl.GetItemState(pNMCD->dwItemSpec, LVIS_STATEIMAGEMASK))
 //			lplvcd->clrTextBk = RGB(204, 255, 255); //체크박스가 선택된 경우 배경이 민트
 //        else
@@ -416,6 +417,15 @@ int CARV300_SN_WriterDlg::SNWrite(MS_TYPE type)
 
 	if(type == MASTER || type == SLAVE)
 	{
+		if(type == MASTER)
+		{
+			OpenPort(m_strMPort, "11500");
+
+
+		} else if (type == SLAVE) {
+			OpenPort(m_strSPort, "11500");
+		}
+
 		CSpreadSheet SS((LPCTSTR)m_strSNFileName,ARV300_SPREEDSHEET_NAME);
 		CStringArray old_sa, new_sa;
 
@@ -488,10 +498,16 @@ void CARV300_SN_WriterDlg::OnFileOption()
 {
 	if(m_dlgARV300.DoModal())
 	{
-		// 
-		m_statusMPort = TRUE;
-		m_statusSPort = TRUE;
-		ARV300_WRButtonEnable(m_statusMPort || m_statusSPort);
+		m_statusMPort = m_dlgARV300.m_statusMPort;
+		m_statusSPort = m_dlgARV300.m_statusSPort;
+		
+		m_strMPort = (LPCTSTR)m_dlgARV300.m_strMPort;
+		m_strSPort = (LPCTSTR)m_dlgARV300.m_strSPort;
+
+		m_staticMPORT.SetWindowTextA((LPCTSTR)m_strMPort);
+		m_staticSPORT.SetWindowTextA((LPCTSTR)m_strSPort);
+
+		ARV300_WRButtonEnable(m_statusMPort || m_statusSPort);	
 	}
 }
 

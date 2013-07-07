@@ -107,6 +107,7 @@
     <ClInclude Include="ARV300_SN_WriterDlg.h" />
     <ClInclude Include="cspreadsheet.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="SerialCtrl.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
@@ -115,6 +116,7 @@
     <ClCompile Include="ARV300_COMPort.cpp" />
     <ClCompile Include="ARV300_SN_Writer.cpp" />
     <ClCompile Include="ARV300_SN_WriterDlg.cpp" />
+    <ClCompile Include="SerialCtrl.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

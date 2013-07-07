@@ -11,6 +11,7 @@
 #include "afxwin.h"
 #include "ARV300_COMPort.h"
 #include "ARV300About.h"
+#include "SerialCtrl.h"
 
 
 enum {
@@ -38,7 +39,7 @@ typedef enum {
 } MS_TYPE;
 
 // CARV300_SN_WriterDlg 대화 상자
-class CARV300_SN_WriterDlg : public CDialogEx
+class CARV300_SN_WriterDlg : public CDialogEx,public CSerialIO
 {
 // 생성입니다.
 public:
@@ -82,7 +83,7 @@ private:
 	CString m_strSSN; // Slave Serial Number
 
 	CString m_strMPort; // Master Serial Port
-	CString m_strSport; // Slave Serial Port
+	CString m_strSPort; // Slave Serial Port
 
 	/* Write/Read Type */
 	WR_Type m_WType;

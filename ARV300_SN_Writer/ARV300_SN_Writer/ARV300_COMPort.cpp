@@ -60,7 +60,8 @@ BOOL CARV300_COMPort::OnInitDialog()
 
 	m_comboMPort.SetCurSel(m_comboMPort.GetCount()-1);
 	m_comboSPort.SetCurSel(m_comboMPort.GetCount()-1);
-
+	m_statusMPort = FALSE;
+	m_statusSPort = FALSE;
 	
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -69,41 +70,34 @@ BOOL CARV300_COMPort::OnInitDialog()
 
 void CARV300_COMPort::comportlist(void)
 {
+     HKEY h_CommKey;
+     LONG Reg_Ret;
+     DWORD Size = MAX_PATH;
+     char i_str[MAX_PATH];
 
-    CString m_strComPort;
- 
-    HKEY hKey;
-    LONG Result;
-    LPCTSTR lpszSubKey="HARDWARE\\DEVICEMAP\\SERIALCOMM";
- 
-    char lpValue[10];
-    DWORD dwType, dwByte;
+     Reg_Ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE,"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ | KEY_QUERY_VALUE, &h_CommKey);   
+        //레지스트리..
+
+     if(Reg_Ret == ERROR_SUCCESS)
+     {
+          for(int i = 0; Reg_Ret == ERROR_SUCCESS; i++)
+          {
+               Reg_Ret = RegEnumValue(h_CommKey, i, i_str, &Size, NULL, NULL, NULL, NULL);
+               if(Reg_Ret == ERROR_SUCCESS)
+               {
+                    DWORD dwType, dwSize = MAX_PATH;
+                    char szBuffer[MAX_PATH];
     
-    Result = RegOpenKeyEx(HKEY_LOCAL_MACHINE,lpszSubKey,0,KEY_ALL_ACCESS,&hKey);
- 
-    if(Result == ERROR_SUCCESS)
-    {
-        int i = 0;
-        while (!Result)
-        {
-            CString strSubKey;
-            strSubKey.Format("\\device\\serial%d", i);
- 
-            Result = RegQueryValueEx(hKey, strSubKey, NULL, &dwType, (unsigned char*)lpValue, &dwByte);
-            if( Result == ERROR_SUCCESS )
-            {
-                m_strComPort = lpValue;
- 				m_comboMPort.AddString((LPCTSTR)m_strComPort);
-				m_comboSPort.AddString((LPCTSTR)m_strComPort);               
-            }
-            else
-            {
-                m_strComPort = "";
-            }
-            i++;
-        }
-    }
-    RegCloseKey(hKey);
+                    RegQueryValueEx(h_CommKey, i_str, 0, &dwType, (LPBYTE)szBuffer, &dwSize);
+
+                    m_comboMPort.AddString(szBuffer);  // 리스트 박스에 레지스트리 내용 추가(여기서는 COM PORT)
+                    m_comboSPort.AddString(szBuffer);  // 리스트 박스에 레지스트리 내용 추가(여기서는 COM PORT)
+                            //하위 레지스트리 값을 얻을 수 있음. 
+               }
+               Size = MAX_PATH;
+          }
+     }
+     RegCloseKey(h_CommKey); 
 }
 
 
@@ -111,6 +105,7 @@ void CARV300_COMPort::OnCbnSelchangeComboMport()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	m_comboMPort.GetWindowTextA(m_strMPort);
+	m_statusMPort = (m_comboMPort.GetCurSel() != (m_comboMPort.GetCount() - 1))?TRUE:FALSE;
 }
 
 
@@ -118,4 +113,5 @@ void CARV300_COMPort::OnCbnSelchangeComboSport()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	m_comboSPort.GetWindowTextA(m_strSPort);
+	m_statusSPort = (m_comboSPort.GetCurSel() != (m_comboSPort.GetCount() - 1))?TRUE:FALSE;
 }
