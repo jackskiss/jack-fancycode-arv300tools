@@ -7,6 +7,7 @@
 #include "ARV300_SN_WriterDlg.h"
 #include "afxdialogex.h"
 #include "cspreadsheet.h"
+#include "SerialCtrl.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -623,4 +624,65 @@ void CARV300_SN_WriterDlg::OnTimer(UINT_PTR nIDEvent)
 	// Send Message 
 
 	CDialogEx::OnTimer(nIDEvent);
+}
+
+void CARV300_SN_WriterDlg::OnEventOpen(BOOL bSuccess)
+{
+	CString str;
+	if(bSuccess)
+	{
+		str=m_strPortName+" open successfully";
+
+		bPortOpened=TRUE;
+		m_btnOpen.SetWindowText("Close");
+		
+	}
+	else
+	{
+		str=m_strPortName+" open failed";
+	}
+	m_staticInfo.SetWindowText(str);
+}
+
+void CARV300_SN_WriterDlg::OnEventClose(BOOL bSuccess)
+{
+	CString str;
+	if(bSuccess)
+	{
+		str=m_strPortName+" close successfully";
+		bPortOpened=FALSE;
+		m_btnOpen.SetWindowText("Open");
+
+	}
+	else
+	{
+		str=m_strPortName+" close failed";
+	}
+	m_staticInfo.SetWindowText(str);
+}
+
+void CARV300_SN_WriterDlg::OnEventRead(char *inPacket,int inLength)
+{
+	
+	m_listboxRead.AddString(inPacket);
+
+	CString str;
+	str.Format("%d bytes read",inLength);
+
+	m_staticInfo.SetWindowText(str);
+	
+}
+void CARV300_SN_WriterDlg::OnEventWrite(int nWritten)
+{
+	if(nWritten>0)
+	{
+		CString str;
+		str.Format("%d bytes written",nWritten);
+		m_staticInfo.SetWindowText(str);
+	}
+	else
+	{
+		m_staticInfo.SetWindowText("Write failed");
+	}
+
 }

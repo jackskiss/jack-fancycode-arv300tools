@@ -54,7 +54,7 @@ typedef struct Thread_Info_Data_Type {
 } Thread_Info_Data_Type;
 
 // CARV300_SN_WriterDlg 대화 상자
-class CARV300_SN_WriterDlg : public CDialogEx
+class CARV300_SN_WriterDlg : public CDialogEx,,public CSerialIO
 {
 // 생성입니다.
 public:
@@ -78,6 +78,11 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
+	virtual void OnEventOpen(BOOL bSuccess);
+	virtual void OnEventClose(BOOL bSuccess);
+	virtual void OnEventRead(char *inPacket,int inLength);
+	virtual void OnEventWrite(int nWritten);
+
 	afx_msg void OnFileOpenSn();
 	CListCtrl m_SNListCtrl;
 	CString m_strSNFileName;
