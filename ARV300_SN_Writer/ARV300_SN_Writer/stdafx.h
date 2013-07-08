@@ -56,4 +56,7 @@
 #endif
 #endif
 
+#define ARV300_USER_MESSAGE_POPUPEXIT		WM_USER + 1 // Exit popup window
+//#define ARV300_USER_WM_MESSAGE_POPUPEXIT		WM_USER + 1 // Exit popup window
+
 

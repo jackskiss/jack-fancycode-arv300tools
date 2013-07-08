@@ -11,10 +11,10 @@
 #include "afxwin.h"
 #include "ARV300_COMPort.h"
 #include "ARV300About.h"
-#include "SerialCtrl.h"
+#include "ARV300_BusPopup.h"
 
 
-enum {
+enum ARV300_ERROR {
 	ARV300_ERROR_NO_ERROR,
 	ARV300_ERROR_NO_MS_TYPE,
 	ARV300_ERROR_DB_CONNECTION_FAIL,
@@ -22,24 +22,39 @@ enum {
 	ARV300_ERROR_COMMIT_FILESAVE,
 };
 
-enum {
+enum ARV300_DB_FIELD {
 	ARV300_DB_FIELD_SN,
 	ARV300_DB_FIELD_MASTER,
 	ARV300_DB_FIELD_SLAVE,
 }; 
-typedef enum {
+typedef enum WR_Type {
 	MS_BOTH,
 	M_ONLY,
 	S_ONLY
 } WR_Type;
 
-typedef enum {
+typedef enum MS_TYPE {
 	MASTER,
 	SLAVE
 } MS_TYPE;
 
+typedef enum CMD_Type {
+	WRITE_CMD,
+	READ_CMD
+} CMD_Type;
+
+typedef struct Thread_Info_Data_Type {
+	CMD_Type cmd;
+	MS_TYPE ms;
+	unsigned int index;
+	CString fname;
+	CString time;
+	CString port;
+	HWND	hdlg;
+} Thread_Info_Data_Type;
+
 // CARV300_SN_WriterDlg 대화 상자
-class CARV300_SN_WriterDlg : public CDialogEx,public CSerialIO
+class CARV300_SN_WriterDlg : public CDialogEx
 {
 // 생성입니다.
 public:
@@ -68,6 +83,9 @@ public:
 	CString m_strSNFileName;
 	CARV300_COMPort m_dlgARV300;
 	CARV300About m_dlgAbout;
+	CARV300_BusPopup m_dlgPopup;
+
+	Thread_Info_Data_Type m_data;
 
 private:
 	int ExcelToListCtrl(CString strExcelFilePath);
@@ -83,11 +101,12 @@ private:
 	CString m_strSSN; // Slave Serial Number
 
 	CString m_strMPort; // Master Serial Port
-	CString m_strSPort; // Slave Serial Port
+	CString m_strSport; // Slave Serial Port
 
 	/* Write/Read Type */
 	WR_Type m_WType;
 	WR_Type m_RType;
+
 
 public:
 	afx_msg void OnNMCustomdrawListSn(NMHDR *pNMHDR, LRESULT *pResult);
@@ -119,4 +138,5 @@ private:
 	bool ARV300_WRButtonEnable(bool Enable);
 public:
 	afx_msg void OnHelpAbout();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 };

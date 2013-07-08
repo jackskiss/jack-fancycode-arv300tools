@@ -14,11 +14,15 @@ IMPLEMENT_DYNAMIC(CARV300_COMPort, CDialogEx)
 CARV300_COMPort::CARV300_COMPort(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CARV300_COMPort::IDD, pParent)
 {
-
+	m_strMPort = _T("");
+	m_strSPort = _T("");
+	m_statusMPort = FALSE;
+	m_statusSPort = FALSE;
 }
 
 CARV300_COMPort::~CARV300_COMPort()
 {
+
 }
 
 void CARV300_COMPort::DoDataExchange(CDataExchange* pDX)
@@ -55,14 +59,33 @@ BOOL CARV300_COMPort::OnInitDialog()
 	m_comboMPort.AddString((LPCTSTR)strCOM);
 	m_comboSPort.AddString((LPCTSTR)strCOM);
 
-	m_strMPort = (LPCTSTR)strCOM;
-	m_strSPort = (LPCTSTR)strCOM;
+	int curidx = m_comboMPort.FindString(0,(LPCTSTR)m_strMPort);
 
-	m_comboMPort.SetCurSel(m_comboMPort.GetCount()-1);
-	m_comboSPort.SetCurSel(m_comboMPort.GetCount()-1);
-	m_statusMPort = FALSE;
-	m_statusSPort = FALSE;
+	if(m_strMPort.IsEmpty() || (curidx < 0))
+	{
+		m_strMPort = (LPCTSTR)strCOM;
+		m_comboMPort.SetCurSel(m_comboMPort.GetCount()-1);
+		m_statusMPort = FALSE;
+	}
+	else
+	{
+		m_comboMPort.SetCurSel(curidx);
+		m_statusMPort = TRUE;
+	}
 	
+	curidx = m_comboSPort.FindString(0,(LPCTSTR)m_strSPort);
+
+	if(m_strSPort.IsEmpty() || (curidx < 0))
+	{
+		m_strSPort = (LPCTSTR)strCOM;
+		m_comboSPort.SetCurSel(m_comboSPort.GetCount()-1);
+		m_statusSPort = FALSE;
+	}
+	else
+	{
+		m_comboSPort.SetCurSel(curidx);
+		m_statusSPort = TRUE;
+	}
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -70,48 +93,63 @@ BOOL CARV300_COMPort::OnInitDialog()
 
 void CARV300_COMPort::comportlist(void)
 {
-     HKEY h_CommKey;
-     LONG Reg_Ret;
-     DWORD Size = MAX_PATH;
-     char i_str[MAX_PATH];
-
-     Reg_Ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE,"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ | KEY_QUERY_VALUE, &h_CommKey);   
-        //레지스트리..
-
-     if(Reg_Ret == ERROR_SUCCESS)
-     {
-          for(int i = 0; Reg_Ret == ERROR_SUCCESS; i++)
-          {
-               Reg_Ret = RegEnumValue(h_CommKey, i, i_str, &Size, NULL, NULL, NULL, NULL);
-               if(Reg_Ret == ERROR_SUCCESS)
-               {
-                    DWORD dwType, dwSize = MAX_PATH;
-                    char szBuffer[MAX_PATH];
+    HKEY  hSerialCom;
+    TCHAR buffer[_MAX_PATH], data[_MAX_PATH];
+    DWORD len, type, dataSize;
+    long  i;
     
-                    RegQueryValueEx(h_CommKey, i_str, 0, &dwType, (LPBYTE)szBuffer, &dwSize);
-
-                    m_comboMPort.AddString(szBuffer);  // 리스트 박스에 레지스트리 내용 추가(여기서는 COM PORT)
-                    m_comboSPort.AddString(szBuffer);  // 리스트 박스에 레지스트리 내용 추가(여기서는 COM PORT)
-                            //하위 레지스트리 값을 얻을 수 있음. 
-               }
-               Size = MAX_PATH;
-          }
-     }
-     RegCloseKey(h_CommKey); 
+    if (::RegOpenKeyEx(HKEY_LOCAL_MACHINE, 
+                       _T("HARDWARE\\DEVICEMAP\\SERIALCOMM"), 
+                       0, 
+//                       KEY_ALL_ACCESS, 
+                       KEY_QUERY_VALUE, 
+                       &hSerialCom) == ERROR_SUCCESS)
+    {
+        for (i=0, len=dataSize=_MAX_PATH; 
+            ::RegEnumValue(hSerialCom, 
+                           i, 
+                           buffer, 
+                           &len, 
+                           NULL, 
+                           &type, 
+                           (unsigned char*)data,
+                           &dataSize)==ERROR_SUCCESS; i++, len=dataSize=_MAX_PATH)
+        {
+                data[dataSize-1] = NULL;
+                if (strncmp(data, "COM", 3) == 0)
+				{
+					m_comboMPort.AddString((LPCTSTR)data);
+					m_comboSPort.AddString((LPCTSTR)data);
+				}
+                    
+        }
+		
+        ::RegCloseKey(hSerialCom);
+    }
 }
 
 
 void CARV300_COMPort::OnCbnSelchangeComboMport()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	m_comboMPort.GetWindowTextA(m_strMPort);
-	m_statusMPort = (m_comboMPort.GetCurSel() != (m_comboMPort.GetCount() - 1))?TRUE:FALSE;
+	if(m_comboMPort.GetCurSel() < (m_comboMPort.GetCount()-1))
+	{
+		m_comboMPort.GetWindowTextA(m_strMPort);
+		m_statusMPort = TRUE;
+	}
+	else
+		m_statusMPort = FALSE;
 }
 
 
 void CARV300_COMPort::OnCbnSelchangeComboSport()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	m_comboSPort.GetWindowTextA(m_strSPort);
-	m_statusSPort = (m_comboSPort.GetCurSel() != (m_comboSPort.GetCount() - 1))?TRUE:FALSE;
+	if(m_comboMPort.GetCurSel() < (m_comboMPort.GetCount()-1))
+	{
+		m_comboSPort.GetWindowTextA(m_strSPort);
+		m_statusSPort = TRUE;
+	}
+	else
+		m_statusSPort = FALSE;
 }

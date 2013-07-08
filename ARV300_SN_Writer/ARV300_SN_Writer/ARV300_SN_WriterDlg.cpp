@@ -18,6 +18,8 @@
 
 #define ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW	2
 
+static UINT ARV300_BusThread(LPVOID lParam);
+
 class CAboutDlg : public CDialogEx
 {
 public:
@@ -86,6 +88,7 @@ BEGIN_MESSAGE_MAP(CARV300_SN_WriterDlg, CDialogEx)
 	ON_CBN_SELCHANGE(IDC_COMBO_RTYPE, &CARV300_SN_WriterDlg::OnCbnSelchangeComboRtype)
 	ON_COMMAND(ID_FILE_OPTION, &CARV300_SN_WriterDlg::OnFileOption)
 	ON_COMMAND(ID_HELP_ABOUT, &CARV300_SN_WriterDlg::OnHelpAbout)
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -115,12 +118,9 @@ BOOL CARV300_SN_WriterDlg::OnInitDialog()
 		}
 	}
 
-	// 이 대화 상자의 아이콘을 설정합니다. 응용 프로그램의 주 창이 대화 상자가 아닐 경우에는
-	//  프레임워크가 이 작업을 자동으로 수행합니다.
 	SetIcon(m_hIcon, TRUE);			// 큰 아이콘을 설정합니다.
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
-	// TODO: 여기에 추가 초기화 작업을 추가합니다.
 	m_SNListCtrl.InsertColumn(0, _T("S/N"));
 	m_SNListCtrl.InsertColumn(1, _T("Master Date"));
 	m_SNListCtrl.InsertColumn(2, _T("Slave Date"));
@@ -273,7 +273,6 @@ int CARV300_SN_WriterDlg::ExcelToListCtrl(CString strExcelFilePath)
 
 void CARV300_SN_WriterDlg::OnFileOpenSn()
 {
-	// TODO: 여기에 명령 처리기 코드를 추가합니다.
 //	char szFilter[] = "Serial Number Data (*.xls, *.xlsx) | *.xls;*.xlsx; | All Files(*.*)|*.*||";
 	CString szFilter = _T("Serial Number Data (*.xls, *.xlsx) | *.xls;*.xlsx; | All Files(*.*)|*.*||");
 
@@ -283,7 +282,13 @@ void CARV300_SN_WriterDlg::OnFileOpenSn()
 			m_strSNFileName = dlg.GetPathName();
 
 			if(!m_strSNFileName.IsEmpty())
+			{
 				ExcelToListCtrl(m_strSNFileName);
+			}
+			else
+			{
+				m_strSNFileName = _T("");
+			}
 	}
 }
 
@@ -295,8 +300,7 @@ void CARV300_SN_WriterDlg::OnNMCustomdrawListSn(NMHDR *pNMHDR, LRESULT *pResult)
     
 	switch( pNMCD->dwDrawStage )
     {
-//    case CDDS_SUBITEM | CDDS_PREPAINT | CDDS_ITEM :               
-    case CDDS_PREPAINT:               
+    case CDDS_ITEMPREPAINT :               
 //		if(0x2000 == m_SNListCtrl.GetItemState(pNMCD->dwItemSpec, LVIS_STATEIMAGEMASK))
 //			lplvcd->clrTextBk = RGB(204, 255, 255); //체크박스가 선택된 경우 배경이 민트
 //        else
@@ -310,9 +314,10 @@ void CARV300_SN_WriterDlg::OnNMCustomdrawListSn(NMHDR *pNMHDR, LRESULT *pResult)
 		else if(!m_SNListCtrl.GetItemText(m_curRSIndex, ARV300_DB_FIELD_MASTER).IsEmpty())
 			lplvcd->clrTextBk = RGB(204, 200, 200);
 
-		*pResult = CDRF_NEWFONT;
+//		*pResult = CDRF_NEWFONT;
+		*pResult = CDRF_NOTIFYITEMDRAW;
         return;
-          break;
+        // break;
 	}
 
 	*pResult = 0;
@@ -370,12 +375,22 @@ void CARV300_SN_WriterDlg::OnBnClickedWriteBtn()
 		return;
 	}
 
+	CARV300_BusPopup *popup = NULL;
+
+	popup = new CARV300_BusPopup();
+    EnableWindow( FALSE );
+	popup->Create(IDD_DIALOG_POPUP, this);
+	popup->ShowWindow(SW_SHOW);
+    // Walk up the window chain to find the main parent wnd and disable it. 
+	popup->EnableWindow(TRUE);
+
+
 	if(m_statusMPort && (m_WType == MS_BOTH || m_WType == M_ONLY))
 	{
 		if((ret = SNWrite(MASTER)) != ARV300_ERROR_NO_ERROR)
 		{
 			errstr.Format("Error: SNWrite %d", ret);
-			AfxMessageBox(LPCTSTR(errstr));
+			AfxMessageBox(LPCTSTR(errstr), MB_OK);
 		}
 	}
 
@@ -384,9 +399,13 @@ void CARV300_SN_WriterDlg::OnBnClickedWriteBtn()
 		if(SNWrite(SLAVE) != ARV300_ERROR_NO_ERROR)
 		{
 			errstr.Format("Error: SNWrite %d", ret);
-			AfxMessageBox(LPCTSTR(errstr));
+			AfxMessageBox(LPCTSTR(errstr), MB_OK);
 		}
 	}
+
+	EnableWindow(TRUE);
+	popup->DestroyWindow();
+	delete popup;
 }
 
 
@@ -413,18 +432,14 @@ void CARV300_SN_WriterDlg::OnBnClickedReadBtn()
 int CARV300_SN_WriterDlg::SNWrite(MS_TYPE type)
 {
 	int ret = ARV300_ERROR_NO_ERROR;
-	
 
 	if(type == MASTER || type == SLAVE)
 	{
-		if(type == MASTER)
-		{
-			OpenPort(m_strMPort, "11500");
 
+/*************************** START DATABASE ******************************/
 
-		} else if (type == SLAVE) {
-			OpenPort(m_strSPort, "11500");
-		}
+		if(m_strSNFileName.IsEmpty()) // DATABASE NOT OPENED
+			return ARV300_ERROR_NO_ERROR;
 
 		CSpreadSheet SS((LPCTSTR)m_strSNFileName,ARV300_SPREEDSHEET_NAME);
 		CStringArray old_sa, new_sa;
@@ -467,6 +482,8 @@ int CARV300_SN_WriterDlg::SNWrite(MS_TYPE type)
 		} else {
 			ret = -(ARV300_ERROR_DB_ADDROW);
 		}
+/*************************** END DATABASE ******************************/
+
 	} else {
 		ret = -(ARV300_ERROR_NO_MS_TYPE);
 	}
@@ -482,32 +499,26 @@ int CARV300_SN_WriterDlg::SNRead(MS_TYPE type)
 
 void CARV300_SN_WriterDlg::OnCbnSelchangeComboWtype()
 {
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다
 	m_WType = (WR_Type)m_comboWType.GetCurSel();
 }
 
 
 void CARV300_SN_WriterDlg::OnCbnSelchangeComboRtype()
 {
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	m_RType = (WR_Type)m_comboRType.GetCurSel();
 }
 
 
 void CARV300_SN_WriterDlg::OnFileOption()
 {
-	if(m_dlgARV300.DoModal())
+	if((m_dlgARV300.DoModal() == IDOK) && (m_dlgARV300.m_statusMPort || m_dlgARV300.m_statusSPort))
 	{
-		m_statusMPort = m_dlgARV300.m_statusMPort;
-		m_statusSPort = m_dlgARV300.m_statusSPort;
-		
-		m_strMPort = (LPCTSTR)m_dlgARV300.m_strMPort;
-		m_strSPort = (LPCTSTR)m_dlgARV300.m_strSPort;
-
-		m_staticMPORT.SetWindowTextA((LPCTSTR)m_strMPort);
-		m_staticSPORT.SetWindowTextA((LPCTSTR)m_strSPort);
-
-		ARV300_WRButtonEnable(m_statusMPort || m_statusSPort);	
+		// 
+		m_statusMPort = TRUE;
+		m_statusSPort = TRUE;
+		ARV300_WRButtonEnable(m_statusMPort || m_statusSPort);
+		m_staticMPORT.SetWindowTextA((LPCTSTR)m_dlgARV300.m_strMPort);
+		m_staticSPORT.SetWindowTextA((LPCTSTR)m_dlgARV300.m_strSPort);
 	}
 }
 
@@ -523,6 +534,93 @@ bool CARV300_SN_WriterDlg::ARV300_WRButtonEnable(bool Enable)
 
 void CARV300_SN_WriterDlg::OnHelpAbout()
 {
-	// TODO: 여기에 명령 처리기 코드를 추가합니다.
 	m_dlgAbout.DoModal();
+}
+
+
+
+static void SN_Write(HWND pophandle, Thread_Info_Data_Type data)
+{
+	int ret = ARV300_ERROR_NO_ERROR;
+
+	if(data.ms == MASTER || data.ms == SLAVE)
+	{
+		CSpreadSheet SS((LPCTSTR)data.fname,ARV300_SPREEDSHEET_NAME);
+		CStringArray old_sa, new_sa;
+
+		SS.ReadRow(old_sa, ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW+data.index);
+
+		new_sa.Add(old_sa.GetAt(ARV300_DB_FIELD_SN));
+		if(data.ms == MASTER)
+		{
+			new_sa.Add((LPCTSTR)data.time);
+			new_sa.Add(old_sa.GetAt(ARV300_DB_FIELD_MASTER));
+		} else if (data.ms == SLAVE) {
+			new_sa.Add(old_sa.GetAt(ARV300_DB_FIELD_SLAVE));
+			new_sa.Add((LPCTSTR)data.time);
+		}
+
+		if(SS.AddRow(new_sa, ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW+data.index, true))
+		{
+			if(SS.Commit())
+			{
+				ret = ARV300_ERROR_NO_ERROR;
+			}
+			else
+			{
+				ret = -(ARV300_ERROR_COMMIT_FILESAVE);
+			}
+		} else {
+			ret = -(ARV300_ERROR_DB_ADDROW);
+		}
+	} else {
+		ret = -(ARV300_ERROR_NO_MS_TYPE);
+	}
+
+	::SendMessageA(pophandle, ARV300_USER_MESSAGE_POPUPEXIT, NULL, NULL);  
+}
+
+static void SN_Read(HWND pophandle, Thread_Info_Data_Type data)
+{
+
+}
+
+bool loopflags = TRUE;
+
+/* Thread to control popup window */
+UINT ARV300_BusThread(LPVOID lParam)
+{
+	CARV300_SN_WriterDlg *parent = (CARV300_SN_WriterDlg *)lParam;
+	
+	while(loopflags)
+	{
+		if(parent->m_dlgPopup.GetSafeHwnd())
+		{
+
+			switch(parent->m_data.cmd)
+			{
+			case WRITE_CMD:
+				SN_Write(parent->m_dlgPopup.GetSafeHwnd(), parent->m_data);
+				loopflags = FALSE;
+				break;
+			case READ_CMD:
+				SN_Read(parent->m_dlgPopup.GetSafeHwnd(), parent->m_data);
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	
+	return 0;
+
+}
+
+
+void CARV300_SN_WriterDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
+	// Send Message 
+
+	CDialogEx::OnTimer(nIDEvent);
 }

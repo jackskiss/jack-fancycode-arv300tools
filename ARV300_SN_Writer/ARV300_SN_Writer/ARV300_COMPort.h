@@ -28,7 +28,7 @@ public:
 	afx_msg void OnCbnSelchangeComboMport();
 	CString m_strMPort;
 	CString m_strSPort;
-	afx_msg void OnCbnSelchangeComboSport();
 	bool m_statusMPort;
 	bool m_statusSPort;
+	afx_msg void OnCbnSelchangeComboSport();
 };
