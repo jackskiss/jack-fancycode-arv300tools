@@ -24,6 +24,7 @@ CARV300_BusPopup::~CARV300_BusPopup()
 void CARV300_BusPopup::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+    DDX_Control(pDX, IDC_ANIMATED_IMAGE, m_picProgress);
 }
 
 
@@ -38,4 +39,15 @@ LRESULT CARV300_BusPopup::PopupExit(WPARAM wParam, LPARAM lParam)
 {
 	this->EndDialog(1);
 	return 0;
+}
+
+BOOL CARV300_BusPopup::OnInitDialog()
+{
+	CDialogEx::OnInitDialog();
+
+	if (m_picProgress.Load(MAKEINTRESOURCE(IDR_PROGRESS),_T("GIF")))
+		m_picProgress.Draw();
+
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// 예외: OCX 속성 페이지는 FALSE를 반환해야 합니다.
 }

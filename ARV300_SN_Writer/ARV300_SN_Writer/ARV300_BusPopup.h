@@ -1,6 +1,6 @@
 #pragma once
 #include "afxwin.h"
-
+#include "PictureEx.h"
 
 // CARV300_BusPopup 대화 상자입니다.
 
@@ -22,4 +22,6 @@ protected:
 	LRESULT CARV300_BusPopup::PopupExit(WPARAM wParam, LPARAM lParam);
 public:
 	CEdit m_testEdit;
+	CPictureEx m_picProgress;
+	virtual BOOL OnInitDialog();
 };

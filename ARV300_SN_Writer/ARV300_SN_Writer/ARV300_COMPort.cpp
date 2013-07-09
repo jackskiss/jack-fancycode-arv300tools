@@ -145,7 +145,7 @@ void CARV300_COMPort::OnCbnSelchangeComboMport()
 void CARV300_COMPort::OnCbnSelchangeComboSport()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	if(m_comboMPort.GetCurSel() < (m_comboMPort.GetCount()-1))
+	if(m_comboSPort.GetCurSel() < (m_comboSPort.GetCount()-1))
 	{
 		m_comboSPort.GetWindowTextA(m_strSPort);
 		m_statusSPort = TRUE;

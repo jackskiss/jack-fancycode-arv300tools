@@ -22,6 +22,9 @@
     <None Include="res\ARV300_SN_Writer.ico">
       <Filter>리소스 파일</Filter>
     </None>
+    <None Include="res\progress.gif">
+      <Filter>리소스 파일</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ARV300_SN_Writer.h">
@@ -54,6 +57,9 @@
     <ClInclude Include="SerialCtrl.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="PictureEx.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ARV300_SN_Writer.cpp">
@@ -75,6 +81,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="SerialCtrl.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="PictureEx.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

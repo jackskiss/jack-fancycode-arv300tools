@@ -378,14 +378,13 @@ void CARV300_SN_WriterDlg::OnBnClickedWriteBtn()
 
 	CARV300_BusPopup *popup = NULL;
 
-	popup = new CARV300_BusPopup();
+	popup = new CARV300_BusPopup;
     EnableWindow( FALSE );
 	popup->Create(IDD_DIALOG_POPUP, this);
-	popup->ShowWindow(SW_SHOW);
-    // Walk up the window chain to find the main parent wnd and disable it. 
 	popup->EnableWindow(TRUE);
-
-
+	popup->ShowWindow(SW_SHOWNORMAL);
+    // Walk up the window chain to find the main parent wnd and disable it. 
+	Sleep(3000);
 	if(m_statusMPort && (m_WType == MS_BOTH || m_WType == M_ONLY))
 	{
 		if((ret = SNWrite(MASTER)) != ARV300_ERROR_NO_ERROR)
@@ -403,7 +402,6 @@ void CARV300_SN_WriterDlg::OnBnClickedWriteBtn()
 			AfxMessageBox(LPCTSTR(errstr), MB_OK);
 		}
 	}
-
 	EnableWindow(TRUE);
 	popup->DestroyWindow();
 	delete popup;
@@ -515,11 +513,15 @@ void CARV300_SN_WriterDlg::OnFileOption()
 	if((m_dlgARV300.DoModal() == IDOK) && (m_dlgARV300.m_statusMPort || m_dlgARV300.m_statusSPort))
 	{
 		// 
-		m_statusMPort = TRUE;
-		m_statusSPort = TRUE;
+		m_statusMPort = m_dlgARV300.m_statusMPort;
+		m_statusSPort = m_dlgARV300.m_statusSPort;
+
 		ARV300_WRButtonEnable(m_statusMPort || m_statusSPort);
-		m_staticMPORT.SetWindowTextA((LPCTSTR)m_dlgARV300.m_strMPort);
-		m_staticSPORT.SetWindowTextA((LPCTSTR)m_dlgARV300.m_strSPort);
+		if(m_statusMPort)
+			m_staticMPORT.SetWindowTextA((LPCTSTR)m_dlgARV300.m_strMPort);
+		
+		if(m_statusSPort)
+			m_staticSPORT.SetWindowTextA((LPCTSTR)m_dlgARV300.m_strSPort);
 	}
 }
 
@@ -631,17 +633,17 @@ void CARV300_SN_WriterDlg::OnEventOpen(BOOL bSuccess)
 	CString str;
 	if(bSuccess)
 	{
-		str=m_strPortName+" open successfully";
+//		str=m_strPortName+" open successfully";
 
-		bPortOpened=TRUE;
-		m_btnOpen.SetWindowText("Close");
+//		bPortOpened=TRUE;
+//		m_btnOpen.SetWindowText("Close");
 		
 	}
 	else
 	{
-		str=m_strPortName+" open failed";
+//		str=m_strPortName+" open failed";
 	}
-	m_staticInfo.SetWindowText(str);
+//	m_staticInfo.SetWindowText(str);
 }
 
 void CARV300_SN_WriterDlg::OnEventClose(BOOL bSuccess)
@@ -649,27 +651,27 @@ void CARV300_SN_WriterDlg::OnEventClose(BOOL bSuccess)
 	CString str;
 	if(bSuccess)
 	{
-		str=m_strPortName+" close successfully";
-		bPortOpened=FALSE;
-		m_btnOpen.SetWindowText("Open");
+//		str=m_strPortName+" close successfully";
+//		bPortOpened=FALSE;
+//		m_btnOpen.SetWindowText("Open");
 
 	}
 	else
 	{
-		str=m_strPortName+" close failed";
+//		str=m_strPortName+" close failed";
 	}
-	m_staticInfo.SetWindowText(str);
+//	m_staticInfo.SetWindowText(str);
 }
 
 void CARV300_SN_WriterDlg::OnEventRead(char *inPacket,int inLength)
 {
 	
-	m_listboxRead.AddString(inPacket);
+//	m_listboxRead.AddString(inPacket);
 
-	CString str;
-	str.Format("%d bytes read",inLength);
+//	CString str;
+//	str.Format("%d bytes read",inLength);
 
-	m_staticInfo.SetWindowText(str);
+//	m_staticInfo.SetWindowText(str);
 	
 }
 void CARV300_SN_WriterDlg::OnEventWrite(int nWritten)
@@ -678,11 +680,11 @@ void CARV300_SN_WriterDlg::OnEventWrite(int nWritten)
 	{
 		CString str;
 		str.Format("%d bytes written",nWritten);
-		m_staticInfo.SetWindowText(str);
+//		m_staticInfo.SetWindowText(str);
 	}
 	else
 	{
-		m_staticInfo.SetWindowText("Write failed");
+//		m_staticInfo.SetWindowText("Write failed");
 	}
 
 }

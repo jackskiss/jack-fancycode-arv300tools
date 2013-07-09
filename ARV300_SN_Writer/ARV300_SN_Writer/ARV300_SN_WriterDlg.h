@@ -13,7 +13,6 @@
 #include "ARV300About.h"
 #include "ARV300_BusPopup.h"
 
-
 enum ARV300_ERROR {
 	ARV300_ERROR_NO_ERROR,
 	ARV300_ERROR_NO_MS_TYPE,
@@ -54,7 +53,7 @@ typedef struct Thread_Info_Data_Type {
 } Thread_Info_Data_Type;
 
 // CARV300_SN_WriterDlg 대화 상자
-class CARV300_SN_WriterDlg : public CDialogEx,,public CSerialIO
+class CARV300_SN_WriterDlg : public CDialogEx //,public CSerialIO
 {
 // 생성입니다.
 public:
@@ -134,6 +133,7 @@ public:
 	CStatic m_staticSPORT;
 	CComboBox m_comboWType;
 	CComboBox m_comboRType;
+
 private:
 	int SNWrite(MS_TYPE type);
 	int SNRead(MS_TYPE type);
