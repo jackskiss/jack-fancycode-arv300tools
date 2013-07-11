@@ -45,12 +45,19 @@ typedef enum CMD_Type {
 typedef struct Thread_Info_Data_Type {
 	CMD_Type cmd;
 	MS_TYPE ms;
+	WR_Type wr;
 	unsigned int index;
 	CString fname;
 	CString time;
 	CString port;
-	HWND	hdlg;
+	CWnd	*parent;
 } Thread_Info_Data_Type;
+
+typedef struct PopUp_Status_Info_Type {
+	WR_Type wtype;
+	CWnd *parent;
+	HWND self;
+} PopUp_Status_Info_Type;
 
 // CARV300_SN_WriterDlg 대화 상자
 class CARV300_SN_WriterDlg : public CDialogEx //,public CSerialIO
@@ -87,7 +94,7 @@ public:
 	CString m_strSNFileName;
 	CARV300_COMPort m_dlgARV300;
 	CARV300About m_dlgAbout;
-	CARV300_BusPopup m_dlgPopup;
+	CARV300_BusPopup* m_dlgPopup;
 
 	Thread_Info_Data_Type m_data;
 
@@ -105,12 +112,11 @@ private:
 	CString m_strSSN; // Slave Serial Number
 
 	CString m_strMPort; // Master Serial Port
-	CString m_strSport; // Slave Serial Port
+	CString m_strSPort; // Slave Serial Port
 
 	/* Write/Read Type */
 	WR_Type m_WType;
 	WR_Type m_RType;
-
 
 public:
 	afx_msg void OnNMCustomdrawListSn(NMHDR *pNMHDR, LRESULT *pResult);
@@ -134,6 +140,10 @@ public:
 	CComboBox m_comboWType;
 	CComboBox m_comboRType;
 
+	Thread_Info_Data_Type m_threadMasterData;
+	Thread_Info_Data_Type m_threadSlaveData;
+	PopUp_Status_Info_Type m_popupInfo;
+
 private:
 	int SNWrite(MS_TYPE type);
 	int SNRead(MS_TYPE type);
@@ -144,4 +154,5 @@ private:
 public:
 	afx_msg void OnHelpAbout();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	virtual BOOL DestroyWindow();
 };

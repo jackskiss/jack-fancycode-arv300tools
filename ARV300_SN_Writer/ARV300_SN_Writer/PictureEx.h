@@ -86,7 +86,7 @@
 
 #include <vector>
 
-//#define GIF_TRACING  // uncomment it if you want detailed TRACEs
+#define GIF_TRACING  // uncomment it if you want detailed TRACEs
 
 class CPictureEx : public CStatic
 {

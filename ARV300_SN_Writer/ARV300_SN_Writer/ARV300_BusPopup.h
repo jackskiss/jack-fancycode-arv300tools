@@ -1,7 +1,6 @@
 #pragma once
 #include "afxwin.h"
 #include "PictureEx.h"
-
 // CARV300_BusPopup 대화 상자입니다.
 
 class CARV300_BusPopup : public CDialogEx
@@ -24,4 +23,5 @@ public:
 	CEdit m_testEdit;
 	CPictureEx m_picProgress;
 	virtual BOOL OnInitDialog();
+	afx_msg void OnStnClickedAnimatedImage();
 };

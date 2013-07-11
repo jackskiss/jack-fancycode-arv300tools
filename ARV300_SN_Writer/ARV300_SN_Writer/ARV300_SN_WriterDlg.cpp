@@ -19,7 +19,13 @@
 
 #define ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW	2
 
-static UINT ARV300_BusThread(LPVOID lParam);
+static UINT ARV300_PopUpThread(LPVOID lParam);
+static UINT ARV300_MasterThread(LPVOID lParam);
+static UINT ARV300_SlaveThread(LPVOID lParam);
+
+static HANDLE m_hEventMasterFinished;
+static HANDLE m_hEventSlaveFinished;
+static CCriticalSection cs;
 
 class CAboutDlg : public CDialogEx
 {
@@ -60,6 +66,7 @@ CARV300_SN_WriterDlg::CARV300_SN_WriterDlg(CWnd* pParent /*=NULL*/)
 	, m_strSNFileName(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	m_dlgPopup = NULL;
 }
 
 void CARV300_SN_WriterDlg::DoDataExchange(CDataExchange* pDX)
@@ -125,8 +132,8 @@ BOOL CARV300_SN_WriterDlg::OnInitDialog()
 	m_SNListCtrl.InsertColumn(0, _T("S/N"));
 	m_SNListCtrl.InsertColumn(1, _T("Master Date"));
 	m_SNListCtrl.InsertColumn(2, _T("Slave Date"));
-	m_SNListCtrl.SetColumnWidth(0, 100);
-	m_SNListCtrl.SetColumnWidth(1, LVSCW_AUTOSIZE_USEHEADER);
+	m_SNListCtrl.SetColumnWidth(0, 130);
+	m_SNListCtrl.SetColumnWidth(1, 130);
 	m_SNListCtrl.SetColumnWidth(2, LVSCW_AUTOSIZE_USEHEADER);
 	m_SNListCtrl.SetExtendedStyle(
 								m_SNListCtrl.GetExtendedStyle() & (~LVS_EX_HEADERDRAGDROP) | (LVS_EX_MULTIWORKAREAS | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES));
@@ -137,8 +144,6 @@ BOOL CARV300_SN_WriterDlg::OnInitDialog()
 	m_RType = MS_BOTH;
 	m_comboWType.SetCurSel(MS_BOTH);
 	m_comboRType.SetCurSel(MS_BOTH);
-//	m_comboWType.EnableWindow(FALSE);
-//	m_comboRType.EnableWindow(FALSE);
 
     m_statusMPort = FALSE; // Master Port Status
 	m_statusSPort = FALSE; // Slave Port Status
@@ -146,6 +151,26 @@ BOOL CARV300_SN_WriterDlg::OnInitDialog()
 
 	m_staticMPORT.SetWindowText(_T(PORT_STATUS_NOT_OPEN));
 	m_staticSPORT.SetWindowText(_T(PORT_STATUS_NOT_OPEN));
+
+	m_threadMasterData.cmd = (CMD_Type)NULL;
+	m_threadMasterData.fname = _T("");
+	m_threadMasterData.index = 0;
+	m_threadMasterData.ms = MASTER;
+	m_threadMasterData.parent = this;
+	m_threadMasterData.port = _T("");
+	m_threadMasterData.time = _T(""); 
+
+	m_threadSlaveData.cmd = (CMD_Type)NULL;
+	m_threadSlaveData.fname = _T("");
+	m_threadSlaveData.index = 0;
+	m_threadSlaveData.ms = SLAVE;
+	m_threadSlaveData.parent = this;
+	m_threadSlaveData.port = _T("");
+	m_threadSlaveData.time = _T(""); 
+
+	m_popupInfo.parent = this;
+	m_popupInfo.self = NULL;
+	m_popupInfo.wtype = (WR_Type)NULL;
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -368,6 +393,8 @@ void CARV300_SN_WriterDlg::OnBnClickedWriteBtn()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	CString errstr;
+	CTime curtime = CTime::GetCurrentTime();
+	CString strtime = curtime.Format("%c");
 	int ret;
 
 	if(!(m_statusMPort || m_statusSPort) )
@@ -376,35 +403,37 @@ void CARV300_SN_WriterDlg::OnBnClickedWriteBtn()
 		return;
 	}
 
-	CARV300_BusPopup *popup = NULL;
+	m_popupInfo.wtype = m_WType;
+	m_popupInfo.parent = this;
+	m_popupInfo.self = NULL;
 
-	popup = new CARV300_BusPopup;
-    EnableWindow( FALSE );
-	popup->Create(IDD_DIALOG_POPUP, this);
-	popup->EnableWindow(TRUE);
-	popup->ShowWindow(SW_SHOWNORMAL);
-    // Walk up the window chain to find the main parent wnd and disable it. 
-	Sleep(3000);
+	AfxBeginThread(ARV300_PopUpThread, &m_popupInfo);//, THREAD_PRIORITY_HIGHEST);
+
 	if(m_statusMPort && (m_WType == MS_BOTH || m_WType == M_ONLY))
 	{
-		if((ret = SNWrite(MASTER)) != ARV300_ERROR_NO_ERROR)
-		{
-			errstr.Format("Error: SNWrite %d", ret);
-			AfxMessageBox(LPCTSTR(errstr), MB_OK);
-		}
+		m_threadMasterData.cmd = WRITE_CMD;
+		m_threadMasterData.fname = (LPCTSTR)m_strSNFileName;
+		m_threadMasterData.index = m_curRSIndex;
+		m_threadMasterData.wr = m_WType;
+		m_threadMasterData.ms = MASTER;
+		m_threadMasterData.parent = this;
+		m_threadMasterData.port = (LPCTSTR)m_strMPort;
+		m_threadMasterData.time = (LPCTSTR)strtime; 
+		AfxBeginThread(ARV300_MasterThread, &m_threadMasterData); 		
 	}
 
 	if(m_statusMPort && (m_WType == MS_BOTH || m_WType == S_ONLY))
 	{
-		if(SNWrite(SLAVE) != ARV300_ERROR_NO_ERROR)
-		{
-			errstr.Format("Error: SNWrite %d", ret);
-			AfxMessageBox(LPCTSTR(errstr), MB_OK);
-		}
+		m_threadSlaveData.cmd = WRITE_CMD;
+		m_threadSlaveData.fname = (LPCTSTR)m_strSNFileName;
+		m_threadSlaveData.index = m_curRSIndex;
+		m_threadSlaveData.wr = m_WType;
+		m_threadSlaveData.ms = SLAVE;
+		m_threadSlaveData.parent = this;
+		m_threadSlaveData.port = (LPCTSTR)m_strSPort;
+		m_threadSlaveData.time = (LPCTSTR)strtime; 
+		AfxBeginThread(ARV300_SlaveThread, &m_threadSlaveData); 		
 	}
-	EnableWindow(TRUE);
-	popup->DestroyWindow();
-	delete popup;
 }
 
 
@@ -542,28 +571,28 @@ void CARV300_SN_WriterDlg::OnHelpAbout()
 
 
 
-static void SN_Write(HWND pophandle, Thread_Info_Data_Type data)
+static int SN_Write(HWND pophandle, Thread_Info_Data_Type *data)
 {
 	int ret = ARV300_ERROR_NO_ERROR;
 
-	if(data.ms == MASTER || data.ms == SLAVE)
+	if(data->ms == MASTER || data->ms == SLAVE)
 	{
-		CSpreadSheet SS((LPCTSTR)data.fname,ARV300_SPREEDSHEET_NAME);
+		CSpreadSheet SS((LPCTSTR)data->fname,ARV300_SPREEDSHEET_NAME);
 		CStringArray old_sa, new_sa;
 
-		SS.ReadRow(old_sa, ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW+data.index);
+		SS.ReadRow(old_sa, ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW+data->index);
 
 		new_sa.Add(old_sa.GetAt(ARV300_DB_FIELD_SN));
-		if(data.ms == MASTER)
+		if(data->ms == MASTER)
 		{
-			new_sa.Add((LPCTSTR)data.time);
+			new_sa.Add((LPCTSTR)data->time);
 			new_sa.Add(old_sa.GetAt(ARV300_DB_FIELD_MASTER));
-		} else if (data.ms == SLAVE) {
+		} else if (data->ms == SLAVE) {
 			new_sa.Add(old_sa.GetAt(ARV300_DB_FIELD_SLAVE));
-			new_sa.Add((LPCTSTR)data.time);
+			new_sa.Add((LPCTSTR)data->time);
 		}
 
-		if(SS.AddRow(new_sa, ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW+data.index, true))
+		if(SS.AddRow(new_sa, ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW+data->index, true))
 		{
 			if(SS.Commit())
 			{
@@ -580,45 +609,100 @@ static void SN_Write(HWND pophandle, Thread_Info_Data_Type data)
 		ret = -(ARV300_ERROR_NO_MS_TYPE);
 	}
 
-	::SendMessageA(pophandle, ARV300_USER_MESSAGE_POPUPEXIT, NULL, NULL);  
+	return ret;
+//	::SendMessageA(pophandle, ARV300_USER_MESSAGE_POPUPEXIT, NULL, NULL);  
 }
 
-static void SN_Read(HWND pophandle, Thread_Info_Data_Type data)
+static void SN_Read(HWND pophandle, Thread_Info_Data_Type *data)
 {
 
 }
-
-bool loopflags = TRUE;
 
 /* Thread to control popup window */
-UINT ARV300_BusThread(LPVOID lParam)
+UINT ARV300_PopUpThread(LPVOID lParam)
 {
-	CARV300_SN_WriterDlg *parent = (CARV300_SN_WriterDlg *)lParam;
-	
-	while(loopflags)
-	{
-		if(parent->m_dlgPopup.GetSafeHwnd())
-		{
+	PopUp_Status_Info_Type *info = (PopUp_Status_Info_Type *)lParam;
 
-			switch(parent->m_data.cmd)
-			{
-			case WRITE_CMD:
-				SN_Write(parent->m_dlgPopup.GetSafeHwnd(), parent->m_data);
-				loopflags = FALSE;
-				break;
-			case READ_CMD:
-				SN_Read(parent->m_dlgPopup.GetSafeHwnd(), parent->m_data);
-				break;
-			default:
-				break;
-			}
-		}
-	}
-	
+	cs.Lock();
+	CARV300_BusPopup popup(info->parent);
+	popup.DoModal();
+
+	cs.Unlock();
+
 	return 0;
 
 }
 
+
+static UINT ARV300_MasterThread(LPVOID lParam)
+{
+	Thread_Info_Data_Type *info = (Thread_Info_Data_Type *)lParam;
+	CARV300_SN_WriterDlg *parent = (CARV300_SN_WriterDlg *)info->parent;
+
+	m_hEventMasterFinished = CreateEvent(NULL, FALSE, FALSE, NULL); // auto reset, initially reset
+
+	if(info->cmd == WRITE_CMD)
+	{
+		if(SN_Write(parent->GetSafeHwnd(), info) == ARV300_ERROR_NO_ERROR)
+		{
+			parent->m_SNListCtrl.SetItemText(info->index, ARV300_DB_FIELD_MASTER, (LPCTSTR)info->time);
+			parent->m_staticMDATE.SetWindowTextA((LPCTSTR)info->time);
+		}
+	}
+	else // READ_CMD
+	{
+
+	}
+
+	
+	if(info->wr == MS_BOTH)
+		SetEvent(m_hEventMasterFinished);
+	else
+	{
+		if(parent->m_popupInfo.self)
+			::SendMessageA(parent->m_popupInfo.self, ARV300_USER_MESSAGE_POPUPEXIT, NULL, NULL);  
+	}
+
+	return 0;
+}
+
+static UINT ARV300_SlaveThread(LPVOID lParam)
+{
+	Thread_Info_Data_Type *info = (Thread_Info_Data_Type *)lParam;
+	CARV300_SN_WriterDlg *parent = (CARV300_SN_WriterDlg *)info->parent;
+
+	if(info->wr != M_ONLY)
+	{
+		if(info->wr == MS_BOTH)
+		{
+			WaitForSingleObject(m_hEventMasterFinished, INFINITE);
+		}
+
+		if(info->cmd == WRITE_CMD)
+		{
+			if(SN_Write(parent->GetSafeHwnd(), info) == ARV300_ERROR_NO_ERROR)
+			{
+				parent->m_SNListCtrl.SetItemText(info->index, ARV300_DB_FIELD_SLAVE, (LPCTSTR)info->time);
+				parent->m_staticSDATE.SetWindowTextA((LPCTSTR)info->time);
+			}
+		}
+		else // READ_CMD
+		{
+
+		}
+	}
+
+	if(m_hEventMasterFinished)
+	{
+		CloseHandle(m_hEventMasterFinished);
+		m_hEventMasterFinished = NULL;
+	}
+
+	if(parent->m_popupInfo.self)
+		::SendMessageA(parent->m_popupInfo.self, ARV300_USER_MESSAGE_POPUPEXIT, NULL, NULL);  
+
+	return 0;
+}
 
 void CARV300_SN_WriterDlg::OnTimer(UINT_PTR nIDEvent)
 {
@@ -687,4 +771,16 @@ void CARV300_SN_WriterDlg::OnEventWrite(int nWritten)
 //		m_staticInfo.SetWindowText("Write failed");
 	}
 
+}
+
+
+BOOL CARV300_SN_WriterDlg::DestroyWindow()
+{
+	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
+	if(m_dlgPopup)
+	{
+		m_dlgPopup->DestroyWindow();
+		delete m_dlgPopup;
+	}
+	return CDialogEx::DestroyWindow();
 }
