@@ -25,6 +25,10 @@ static UINT ARV300_SlaveThread(LPVOID lParam);
 
 static HANDLE m_hEventMasterFinished;
 static HANDLE m_hEventSlaveFinished;
+static HANDLE m_hPortOpen;
+static HANDLE m_hWrite;
+static HANDLE m_hRead;
+
 static CCriticalSection cs;
 
 class CAboutDlg : public CDialogEx
@@ -570,15 +574,48 @@ void CARV300_SN_WriterDlg::OnHelpAbout()
 }
 
 
+//static HANDLE m_hPortOpen;
+//static HANDLE m_hWrite;
+//static HANDLE m_hRead;
 
 static int SN_Write(HWND pophandle, Thread_Info_Data_Type *data)
 {
+    CARV300_SN_WriterDlg *parent = (CARV300_SN_WriterDlg *)data->parent;
 	int ret = ARV300_ERROR_NO_ERROR;
+	DWORD retcom;
 
 	if(data->ms == MASTER || data->ms == SLAVE)
 	{
 		CSpreadSheet SS((LPCTSTR)data->fname,ARV300_SPREEDSHEET_NAME);
 		CStringArray old_sa, new_sa;
+
+//------ WRITE DEVICE -------------------------------------// 
+		// Port Open
+		m_hEventMasterFinished = CreateEvent(NULL, FALSE, FALSE, NULL); // auto reset, initially reset
+		parent->OpenPort(data->port, _T("115200"));
+		
+//		WAIT_FAILED, WAIT_ABANDONED,WAIT_OBJECT_0, WAIT_TIMEOUT
+		if(WaitForSingleObject(m_hPortOpen, INFINITE) != WAIT_OBJECT_0)
+		{
+			if(m_hPortOpen)
+				CloseHandle(m_hPortOpen);
+		
+			return -(ARV300_ERROR_COMPORT_OPEN_FAILURE);
+		}
+
+		if(m_hPortOpen)
+			CloseHandle(m_hPortOpen);
+
+		WaitForSingleObject(
+
+		// Port Status Check
+
+
+		// Write Port
+
+
+		// Check Write Value
+//------ WRITE END ----------------------------------------//
 
 		SS.ReadRow(old_sa, ROWLENGHT_FROM_FIELDNAME_TO_FIRSTROW+data->index);
 
@@ -721,13 +758,15 @@ void CARV300_SN_WriterDlg::OnEventOpen(BOOL bSuccess)
 
 //		bPortOpened=TRUE;
 //		m_btnOpen.SetWindowText("Close");
-		
+
 	}
 	else
 	{
 //		str=m_strPortName+" open failed";
 	}
 //	m_staticInfo.SetWindowText(str);
+
+	SetEvent(m_hPortOpen);
 }
 
 void CARV300_SN_WriterDlg::OnEventClose(BOOL bSuccess)

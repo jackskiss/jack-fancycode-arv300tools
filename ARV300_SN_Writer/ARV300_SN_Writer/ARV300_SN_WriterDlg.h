@@ -12,6 +12,7 @@
 #include "ARV300_COMPort.h"
 #include "ARV300About.h"
 #include "ARV300_BusPopup.h"
+#include "SerialCtrl.h"
 
 enum ARV300_ERROR {
 	ARV300_ERROR_NO_ERROR,
@@ -19,6 +20,7 @@ enum ARV300_ERROR {
 	ARV300_ERROR_DB_CONNECTION_FAIL,
 	ARV300_ERROR_DB_ADDROW,
 	ARV300_ERROR_COMMIT_FILESAVE,
+	ARV300_ERROR_COMPORT_OPEN_FAILURE,
 };
 
 enum ARV300_DB_FIELD {
@@ -60,7 +62,7 @@ typedef struct PopUp_Status_Info_Type {
 } PopUp_Status_Info_Type;
 
 // CARV300_SN_WriterDlg 대화 상자
-class CARV300_SN_WriterDlg : public CDialogEx //,public CSerialIO
+class CARV300_SN_WriterDlg : public CDialogEx ,public CSerialIO
 {
 // 생성입니다.
 public:
@@ -155,4 +157,8 @@ public:
 	afx_msg void OnHelpAbout();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	virtual BOOL DestroyWindow();
+	virtual void OnEventOpen(BOOL bSuccess);
+	virtual void OnEventClose(BOOL bSuccess);
+	virtual void OnEventRead(char *inPacket,int inLength);
+	virtual void OnEventWrite(int nWritten);
 };
