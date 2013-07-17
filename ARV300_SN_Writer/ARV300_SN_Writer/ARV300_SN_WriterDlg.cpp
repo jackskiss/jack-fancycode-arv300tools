@@ -8,6 +8,9 @@
 #include "afxdialogex.h"
 #include "cspreadsheet.h"
 #include "SerialCtrl.h"
+#include <conio.h>
+
+#include "afxwin.h" // For Console
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -22,6 +25,8 @@
 static UINT ARV300_PopUpThread(LPVOID lParam);
 static UINT ARV300_MasterThread(LPVOID lParam);
 static UINT ARV300_SlaveThread(LPVOID lParam);
+
+BOOL WINAPI ConsoleHandler(DWORD CEvent);
 
 static HANDLE m_hEventMasterFinished;
 static HANDLE m_hEventSlaveFinished;
@@ -71,6 +76,13 @@ CARV300_SN_WriterDlg::CARV300_SN_WriterDlg(CWnd* pParent /*=NULL*/)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	m_dlgPopup = NULL;
+/*
+#ifdef _AFXDLL
+	Enable3dControls();			// Call this when using MFC in a shared DLL
+#else
+	Enable3dControlsStatic();	// Call this when linking to MFC statically
+#endif
+	*/
 }
 
 void CARV300_SN_WriterDlg::DoDataExchange(CDataExchange* pDX)
@@ -101,6 +113,7 @@ BEGIN_MESSAGE_MAP(CARV300_SN_WriterDlg, CDialogEx)
 	ON_COMMAND(ID_FILE_OPTION, &CARV300_SN_WriterDlg::OnFileOption)
 	ON_COMMAND(ID_HELP_ABOUT, &CARV300_SN_WriterDlg::OnHelpAbout)
 	ON_WM_TIMER()
+	ON_COMMAND(ID_WIND_LOGWINDOW, &CARV300_SN_WriterDlg::OnWindLogwindow)
 END_MESSAGE_MAP()
 
 
@@ -606,7 +619,7 @@ static int SN_Write(HWND pophandle, Thread_Info_Data_Type *data)
 		if(m_hPortOpen)
 			CloseHandle(m_hPortOpen);
 
-		WaitForSingleObject(
+	//	WaitForSingleObject(
 
 		// Port Status Check
 
@@ -816,10 +829,73 @@ void CARV300_SN_WriterDlg::OnEventWrite(int nWritten)
 BOOL CARV300_SN_WriterDlg::DestroyWindow()
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
+	if (!FreeConsole())
+		AfxMessageBox("Could not free the console!");
+
 	if(m_dlgPopup)
 	{
 		m_dlgPopup->DestroyWindow();
 		delete m_dlgPopup;
 	}
 	return CDialogEx::DestroyWindow();
+}
+
+
+void CARV300_SN_WriterDlg::OnWindLogwindow()
+{
+	if (!AllocConsole())
+		AfxMessageBox("Failed to create the console!", MB_ICONEXCLAMATION);
+	else 
+	{
+		if (SetConsoleCtrlHandler((PHANDLER_ROUTINE)ConsoleHandler,TRUE)==FALSE)
+		{
+    // unable to install handler... 
+    // display message to the user
+				printf("Unable to install handler!\n");
+				return;
+		}
+
+//		AttachConsole( GetCurrentProcessId() ) ;
+	}
+	_cprintf("Test Message\n");
+
+/*
+HANDLE hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+ 
+::SetConsoleTitle("결과");
+HWND hwnd = ::FindWindow(NULL, "결과");
+RemoveMenu(::GetSystemMenu(hwnd, FALSE),  SC_CLOSE, MF_BYCOMMAND);
+*/
+}
+
+
+BOOL WINAPI ConsoleHandler(DWORD CEvent)
+{
+    char mesg[128];
+
+    switch(CEvent)
+    {
+    case CTRL_C_EVENT:
+//        MessageBox(NULL,
+//            "CTRL+C received!","CEvent",MB_OK);
+//        break;
+    case CTRL_BREAK_EVENT:
+ //       MessageBox(NULL,
+ //           "CTRL+BREAK received!","CEvent",MB_OK);
+ //       break;
+    case CTRL_CLOSE_EVENT:
+//		FreeConsole();
+//		ExitProcess(1);
+ //       MessageBox(NULL,
+ //           "Program being closed!","CEvent",MB_OK);
+//		break;
+    case CTRL_LOGOFF_EVENT:
+ //       MessageBox(NULL,
+ //           "User is logging off!","CEvent",MB_OK);
+ //       break;
+    case CTRL_SHUTDOWN_EVENT:
+		break;
+
+    }
+    return TRUE;
 }

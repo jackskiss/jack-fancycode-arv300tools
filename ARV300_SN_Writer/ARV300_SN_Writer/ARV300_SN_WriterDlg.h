@@ -157,8 +157,5 @@ public:
 	afx_msg void OnHelpAbout();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	virtual BOOL DestroyWindow();
-	virtual void OnEventOpen(BOOL bSuccess);
-	virtual void OnEventClose(BOOL bSuccess);
-	virtual void OnEventRead(char *inPacket,int inLength);
-	virtual void OnEventWrite(int nWritten);
+	afx_msg void OnWindLogwindow();
 };
